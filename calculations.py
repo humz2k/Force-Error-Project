@@ -37,7 +37,7 @@ diffs = []
 theorys = []
 programs = []
 xs = []
-n = 100000
+n = 20000
 start = 1
 repeats = 5
 for i in range(start,n,1000):
@@ -57,7 +57,56 @@ for i in range(start,n,1000):
 
 #print(to_plot)
 #plt.plot(xs,diffs)
-plt.plot(theorys)
-plt.plot(programs)
+
+fig, ((theory_plot,program_plot),(overlay_plot,diff_plot)) = plt.subplots(2,2)
+
+theory_plot.plot(xs,theorys)
+theory_plot.set_xlabel('N Particles')
+theory_plot.set_ylabel('Potential')
+theory_plot.set_title("Theoretical Gravitational Potential",pad=12)
+
+program_plot.plot(xs,programs)
+program_plot.set_xlabel('N Particles')
+program_plot.set_ylabel('Potential')
+program_plot.set_title('Calculated Gravitational Potential',pad=12)
+
+overlay_plot.plot(xs,programs,alpha=0.4, label = "Calculated")
+overlay_plot.plot(xs,theorys,alpha=0.4, label = "Theoretical")
+overlay_plot.set_xlabel('N Particles')
+overlay_plot.set_ylabel('Potential')
+overlay_plot.legend(loc ="upper right")
+overlay_plot.set_title('Theoretical/Calculated Overlay',pad=12)
+
+diff_plot.plot(xs,diffs)
+diff_plot.set_xlabel('N Particles')
+diff_plot.set_ylabel('Delta Potential')
+diff_plot.set_title('Theoretical/Calculated Difference',pad=12)
+
+fig.tight_layout()
 plt.show()
+
+'''
+theory_plot = plt.figure(1)
+plt.title('Theoretical Gravitational PE')
+plt.plot(xs,theorys)
+theory_plot.show()
+
+program_plot = plt.figure(2)
+plt.title('Calculated Gravitational PE')
+plt.plot(xs,programs)
+program_plot.show()
+
+overlay_plot = plt.figure(3)
+plt.title('Theoretical/Calculated Overlay')
+plt.plot(xs,programs,alpha=0.5)
+plt.plot(xs,theorys,alpha=0.5)
+overlay_plot.show()
+
+diff_plot = plt.figure(4)
+plt.title('Theoretical/Calculated Difference')
+plt.plot(xs,diffs)
+diff_plot.show()
+
+input()
+'''
 #print(diff,theory,programmatic)
