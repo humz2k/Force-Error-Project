@@ -6,13 +6,19 @@ from scipy import spatial
 from scipy import constants
 import matplotlib.pyplot as plt
 
-def get_programmatic(n_particles,density):
-    radius,particles = get_particles(n_particles,density)
+def get_programmatic(density=None,radius=None,n_particles=None):
+    radius,particles = get_particles(n_particles=n_particles,density=density,radius=radius)
+
+    mass_particles = (density * (radius ** 3))/n_particles
+
+    print("MASS",mass_particles**2)
+    #print(particles,radius)
+
     total = 0
     start_point = np.array([[radius,0,0]])
     #print(particles)
     #print(start_point)
-    dist = -constants.G/spatial.distance.cdist(particles,start_point)
+    dist = -constants.G * (mass_particles**2)/spatial.distance.cdist(particles,start_point)
     return np.sum(dist)
     '''
     for i in range(particles.shape[0]-1):
@@ -27,27 +33,32 @@ def get_programmatic(n_particles,density):
     '''
     #return total
 
-def get_diff(n_particles,density):
-    theory = get_phi(n_particles,density)
-    programmatic = get_programmatic(n_particles,density)
+def get_diff(n_particles,density,radius):
+    theory = get_phi(n_particles,density,radius)
+    programmatic = get_programmatic(n_particles=n_particles,density=density,radius=radius)
     return theory-programmatic,theory,programmatic
 
+
+#print(get_programmatic(density=0.01,radius=100,n_particles=1))
+#print(get_phi(density=0.01,radius=100,n_particles=1))
+
+#exit(1)
 #print(get_programmatic(10000,100))
 diffs = []
 theorys = []
 programs = []
 xs = []
-n = 20000
-start = 1
+n = 5000
+start = 10
 repeats = 5
-for i in range(start,n,1000):
+for i in range(start,n,10):
     print((i-start)/(n-start))
     xs.append(i)
-    theorys.append(get_phi(i,0.01))
+    theorys.append(get_phi(n_particles=i,density=100,radius=100))
     diff = 0
     programmatics = 0
     for j in range(repeats):
-        temp,theory,programmatic = get_diff(i,0.01)
+        temp,theory,programmatic = get_diff(n_particles=i,density=100,radius=100)
         programmatics += programmatic
         diff += temp
     programmatics = programmatics/repeats
@@ -58,8 +69,10 @@ for i in range(start,n,1000):
 #print(to_plot)
 #plt.plot(xs,diffs)
 
-fig, ((theory_plot,program_plot),(overlay_plot,diff_plot)) = plt.subplots(2,2)
+#fig, ((theory_plot,program_plot),(overlay_plot,diff_plot)) = plt.subplots(2,1)
+fig, (overlay_plot,diff_plot) = plt.subplots(2,1)
 
+'''
 theory_plot.plot(xs,theorys)
 theory_plot.set_xlabel('N Particles')
 theory_plot.set_ylabel('Potential')
@@ -69,6 +82,7 @@ program_plot.plot(xs,programs)
 program_plot.set_xlabel('N Particles')
 program_plot.set_ylabel('Potential')
 program_plot.set_title('Calculated Gravitational Potential',pad=12)
+'''
 
 overlay_plot.plot(xs,programs,alpha=0.4, label = "Calculated")
 overlay_plot.plot(xs,theorys,alpha=0.4, label = "Theoretical")
