@@ -1,3 +1,4 @@
+# %% codecell
 from particles_generator import *
 from theoretical_stuff import *
 import numpy as np
@@ -5,13 +6,14 @@ import math
 from scipy import spatial
 from scipy import constants
 import matplotlib.pyplot as plt
+# %% codecell
 
 def get_programmatic(density=None,radius=None,n_particles=None):
     radius,particles = get_particles(n_particles=n_particles,density=density,radius=radius)
 
     mass_particles = (density * (radius ** 3))/n_particles
 
-    print("MASS",mass_particles**2)
+    #print("MASS",mass_particles**2)
     #print(particles,radius)
 
     total = 0
@@ -32,18 +34,15 @@ def get_programmatic(density=None,radius=None,n_particles=None):
             total += -(constants.G / dist)
     '''
     #return total
+# %% codecell
 
 def get_diff(n_particles,density,radius):
     theory = get_phi(n_particles,density,radius)
     programmatic = get_programmatic(n_particles=n_particles,density=density,radius=radius)
     return theory-programmatic,theory,programmatic
 
+# %% codecell
 
-#print(get_programmatic(density=0.01,radius=100,n_particles=1))
-#print(get_phi(density=0.01,radius=100,n_particles=1))
-
-#exit(1)
-#print(get_programmatic(10000,100))
 diffs = []
 theorys = []
 programs = []
@@ -52,7 +51,6 @@ n = 5000
 start = 10
 repeats = 5
 for i in range(start,n,10):
-    print((i-start)/(n-start))
     xs.append(i)
     theorys.append(get_phi(n_particles=i,density=100,radius=100))
     diff = 0
@@ -66,23 +64,9 @@ for i in range(start,n,10):
     diff = abs(diff/repeats)
     diffs.append(diff)
 
-#print(to_plot)
-#plt.plot(xs,diffs)
+# %% codecell
 
-#fig, ((theory_plot,program_plot),(overlay_plot,diff_plot)) = plt.subplots(2,1)
 fig, (overlay_plot,diff_plot) = plt.subplots(2,1)
-
-'''
-theory_plot.plot(xs,theorys)
-theory_plot.set_xlabel('N Particles')
-theory_plot.set_ylabel('Potential')
-theory_plot.set_title("Theoretical Gravitational Potential",pad=12)
-
-program_plot.plot(xs,programs)
-program_plot.set_xlabel('N Particles')
-program_plot.set_ylabel('Potential')
-program_plot.set_title('Calculated Gravitational Potential',pad=12)
-'''
 
 overlay_plot.plot(xs,programs,alpha=0.4, label = "Calculated")
 overlay_plot.plot(xs,theorys,alpha=0.4, label = "Theoretical")
@@ -99,28 +83,4 @@ diff_plot.set_title('Theoretical/Calculated Difference',pad=12)
 fig.tight_layout()
 plt.show()
 
-'''
-theory_plot = plt.figure(1)
-plt.title('Theoretical Gravitational PE')
-plt.plot(xs,theorys)
-theory_plot.show()
-
-program_plot = plt.figure(2)
-plt.title('Calculated Gravitational PE')
-plt.plot(xs,programs)
-program_plot.show()
-
-overlay_plot = plt.figure(3)
-plt.title('Theoretical/Calculated Overlay')
-plt.plot(xs,programs,alpha=0.5)
-plt.plot(xs,theorys,alpha=0.5)
-overlay_plot.show()
-
-diff_plot = plt.figure(4)
-plt.title('Theoretical/Calculated Difference')
-plt.plot(xs,diffs)
-diff_plot.show()
-
-input()
-'''
-#print(diff,theory,programmatic)
+# %% codecell
