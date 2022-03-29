@@ -43,44 +43,43 @@ def get_diff(n_particles,density,radius):
 
 # %% codecell
 
-diffs = []
-theorys = []
-programs = []
-xs = []
-n = 5000
-start = 10
-repeats = 5
-for i in range(start,n,10):
-    xs.append(i)
-    theorys.append(get_phi(n_particles=i,density=100,radius=100))
-    diff = 0
-    programmatics = 0
-    for j in range(repeats):
-        temp,theory,programmatic = get_diff(n_particles=i,density=100,radius=100)
-        programmatics += programmatic
-        diff += temp
-    programmatics = programmatics/repeats
-    programs.append(programmatics)
-    diff = abs(diff/repeats)
-    diffs.append(diff)
+if __name__ == "__main__":
+    diffs = []
+    theorys = []
+    programs = []
+    xs = []
+    n = 2000
+    start = 10
+    repeats = 1
+    for i in range(start,n,10):
+        xs.append(i)
+        theorys.append(get_phi(n_particles=i,density=100,radius=100))
+        diff = 0
+        programmatics = 0
+        for j in range(repeats):
+            temp,theory,programmatic = get_diff(n_particles=i,density=100,radius=100)
+            programmatics += programmatic
+            diff += temp
+        programmatics = programmatics/repeats
+        programs.append(programmatics)
+        diff = abs(diff/repeats)
+        diffs.append(diff)
 
-# %% codecell
+    fig, (overlay_plot,diff_plot) = plt.subplots(2,1)
 
-fig, (overlay_plot,diff_plot) = plt.subplots(2,1)
+    overlay_plot.plot(xs,programs,alpha=0.4, label = "Calculated")
+    overlay_plot.plot(xs,theorys,alpha=0.4, label = "Theoretical")
+    overlay_plot.set_xlabel('N Particles')
+    overlay_plot.set_ylabel('Potential')
+    overlay_plot.legend(loc ="upper right")
+    overlay_plot.set_title('Theoretical/Calculated Overlay',pad=12)
 
-overlay_plot.plot(xs,programs,alpha=0.4, label = "Calculated")
-overlay_plot.plot(xs,theorys,alpha=0.4, label = "Theoretical")
-overlay_plot.set_xlabel('N Particles')
-overlay_plot.set_ylabel('Potential')
-overlay_plot.legend(loc ="upper right")
-overlay_plot.set_title('Theoretical/Calculated Overlay',pad=12)
+    diff_plot.plot(xs,diffs)
+    diff_plot.set_xlabel('N Particles')
+    diff_plot.set_ylabel('Delta Potential')
+    diff_plot.set_title('Theoretical/Calculated Difference',pad=12)
 
-diff_plot.plot(xs,diffs)
-diff_plot.set_xlabel('N Particles')
-diff_plot.set_ylabel('Delta Potential')
-diff_plot.set_title('Theoretical/Calculated Difference',pad=12)
-
-fig.tight_layout()
-plt.show()
+    fig.tight_layout()
+    plt.show()
 
 # %% codecell
