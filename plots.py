@@ -3,12 +3,12 @@ from calculations import *
 import matplotlib.pyplot as plt
 
 # %% codecell
-def plot_n_potential(density,radius,repeats=1):
+def plot_n_potential(density,radius,repeats=1,upper_limit=2000):
     diffs = []
     theorys = []
     programs = []
     xs = []
-    n = 2000
+    n = upper_limit
     start = 10
     for i in range(start,n,10):
         xs.append(i)
@@ -72,6 +72,10 @@ def get_spread(n_particles,density,radius,repeats):
 # %% codecell
 
 plot_n_potential(100,100)
+
+# %% codecell
+
+plot_n_potential(100,100,5)
 
 # %% codecell
 
