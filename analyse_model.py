@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
+'''
 with open("model_data_density_1000.txt","r") as f:
     data_1000 = np.array([[float(j) for j in i.split(",")] for i in f.read().splitlines()])
 
@@ -16,9 +18,28 @@ with open("model_data_density_10.txt","r") as f:
 ns = [10,100,500,1000]
 a_data = [np.mean(data_10[:,1]),np.mean(data_100[:,1]),np.mean(data_500[:,1]),np.mean(data_1000[:,1])]
 b_data = [np.mean(data_10[:,2]),np.mean(data_100[:,2]),np.mean(data_500[:,2]),np.mean(data_1000[:,2])]
+'''
 
-plt.plot(ns,a_data)
-plt.yscale('symlog')
+with open("test_model_data.txt","r") as f:
+    data = np.array([[float(j) for j in i.split(",")] for i in f.read().splitlines()])
+
+print(data)
+
+plt.plot(data[:,0],data[:,1])
+#plt.yscale('symlog')
+
+def objective(x):
+    return (1/(x*0.1))*1.5e8
+
+#popt, _ = curve_fit(objective,data[:,0],data[:,1])
+
+#c, = popt
+#print(c)
+
+y_new = objective(data[:,0])
+
+plt.plot(data[:,0],y_new)
+
 plt.show()
 
 '''

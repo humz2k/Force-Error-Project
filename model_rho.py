@@ -51,7 +51,7 @@ def get_error_mean(model_data,m=1.5):
         line3.append(mean)
     return (xs,np.array(line1)),(xs,np.array(line2)),(xs,np.array(line3))
 
-def get_model(n_particles,density,average_of=1,min=1,max=1000):
+def get_model(n_particles,density,average_of=1,min=1,max=1000,step=10,repeats=50):
 
     uppers = []
     lowers = []
@@ -60,7 +60,7 @@ def get_model(n_particles,density,average_of=1,min=1,max=1000):
     #n_particles = 10
     for i in range(average_of):
         print(round(100*(i/average_of)))
-        raw = get_model_data(density,n_particles,rs=range(min,max))
+        raw = get_model_data(density,n_particles,rs=range(min,max,step),repeats=50)
         data = remove_outliers(raw)
         upper,lower,middle = get_error_mean(raw)
         uppers.append(upper)
@@ -104,7 +104,7 @@ def get_model(n_particles,density,average_of=1,min=1,max=1000):
     #plt.plot(middle[0],y_new)
 
     #plt.show()
-
+'''
 with open("model_data_density_50.txt","w") as f:
     density = 500
     a_data = []
@@ -124,4 +124,16 @@ a_plot.plot(ns,a_data)
 a_plot.plot(ns,[np.mean(a_data)]*len(ns))
 b_plot.plot(ns,b_data)
 b_plot.plot(ns,[np.mean(b_data)]*len(ns))
+plt.show()
+'''
+with open("test_model_data.txt","w") as f:
+    a_data = []
+    ns = []
+    for i in range(10,110,5):
+        a,b = get_model(10,i,average_of=10)
+        f.write(str(i) + "," + str(a) + "," + str(b) + "\n")
+        a_data.append(a)
+        ns.append(i)
+
+plt.plot(ns,a_data)
 plt.show()
