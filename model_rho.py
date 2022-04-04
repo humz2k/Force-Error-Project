@@ -51,7 +51,7 @@ def get_error_mean(model_data,m=1.5):
         line3.append(mean)
     return (xs,np.array(line1)),(xs,np.array(line2)),(xs,np.array(line3))
 
-def get_model(n_particles,density,average_of=1,min=1,max=1000,step=10,repeats=50):
+def get_model(n_particles,density,average_of=1,min=1,max=1000,step=1,repeats=100):
 
     uppers = []
     lowers = []
@@ -59,8 +59,8 @@ def get_model(n_particles,density,average_of=1,min=1,max=1000,step=10,repeats=50
 
     #n_particles = 10
     for i in range(average_of):
-        print(round(100*(i/average_of)))
-        raw = get_model_data(density,n_particles,rs=range(min,max,step),repeats=50)
+        print("     ",round(100*(i/average_of)))
+        raw = get_model_data(density,n_particles,rs=range(min,max,step),repeats=repeats)
         data = remove_outliers(raw)
         upper,lower,middle = get_error_mean(raw)
         uppers.append(upper)
@@ -94,16 +94,22 @@ def get_model(n_particles,density,average_of=1,min=1,max=1000,step=10,repeats=50
 
     popt, _ = curve_fit(objective,middle[0],middle[1])
     a,b = popt
-    print("Model: ", "-x**(" + str(a/n_particles) + " * n)" + "/(" + str(b) + ")")
+    a_actual = (a/n_particles)/((1/density)**2)
+    print("Model: ", "-x**(((1/density)**2)*(" + str(a_actual) + " * n))" + "/(" + str(b) + ")")
     #y_new = objective(middle[0],a,b)
 
-    return a/n_particles,b
+    return a_actual,b
 
     #print(y_new)
 
     #plt.plot(middle[0],y_new)
 
     #plt.show()
+
+#print(get_model(10,500))
+#print(get_model(10,1000))
+#print(get_model(10,2000))
+
 '''
 with open("model_data_density_50.txt","w") as f:
     density = 500
@@ -126,14 +132,18 @@ b_plot.plot(ns,b_data)
 b_plot.plot(ns,[np.mean(b_data)]*len(ns))
 plt.show()
 '''
-with open("test_model_data.txt","w") as f:
+
+with open("test_model_data_good_2.txt","w") as f:
     a_data = []
     ns = []
-    for i in range(10,110,5):
-        a,b = get_model(10,i,average_of=10)
+    max = 200
+    for i in range(10,2000,10):
+        print((i/max)*100)
+        a,b = get_model(20,i,average_of=10)
         f.write(str(i) + "," + str(a) + "," + str(b) + "\n")
         a_data.append(a)
         ns.append(i)
 
 plt.plot(ns,a_data)
+plt.semilogy(base=10)
 plt.show()
