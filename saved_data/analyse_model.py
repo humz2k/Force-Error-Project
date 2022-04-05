@@ -33,11 +33,16 @@ def y_func(x,a):
 
 #((1/x)**expo)*a = a_actual
 
-with open("test_model_data_20_10.txt","r") as f:
+with open("test_model_data_good.txt","r") as f:
+    data = np.array([[float(j) for j in i.split(",")] for i in f.read().splitlines()])
+
+plt.plot(data[:,0],data[:,1],label="10")
+
+with open("test_model_data_good_2.txt","r") as f:
     data = np.array([[float(j) for j in i.split(",")] for i in f.read().splitlines()])
 
 plt.plot(data[:,0],data[:,1],label="20")
-
+'''
 a = data[:,1][0]/((1/10)**expo)
 
 asss.append(a)
@@ -112,6 +117,7 @@ print(np.mean(np.array(asss)))
 #y_new = objective(np.array(list(range(0,700))),a,b,c,d)
 
 #plt.plot(list(range(0,700)),y_new,alpha=0.5)
+'''
 plt.legend(loc = "upper right")
 plt.show()
 
