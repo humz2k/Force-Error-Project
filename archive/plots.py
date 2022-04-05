@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 plt.rcParams['figure.figsize'] = [8, 8]
 # %% codecell
-def plot_n_potential(density,radius,repeats=1,upper_limit=2000):
+def plot_n_potential(density,radius,repeats=1,upper_limit=2000,point="radius"):
     diffs = []
     theorys = []
     programs = []
@@ -17,7 +17,7 @@ def plot_n_potential(density,radius,repeats=1,upper_limit=2000):
         diff = 0
         programmatics = 0
         for j in range(repeats):
-            temp,theory,programmatic = get_diff(n_particles=i,density=density,radius=radius)
+            temp,theory,programmatic = get_diff(n_particles=i,density=density,radius=radius,point=point)
             programmatics += programmatic
             diff += temp
         programmatics = programmatics/repeats
@@ -139,8 +139,15 @@ def plot_r_potential(n_particles,density,repeats,base=1,top=100,step=10):
 
 # %% codecell
 
-plot_n_potential(100,100)
+plot_n_potential(100,100,point="center")
 
+# %% codecell
+
+plot_n_potential(100,100,point="radius")
+
+# %% codecell
+
+'''
 # %% codecell
 
 plot_n_potential(100,100,5)
@@ -169,3 +176,4 @@ get_spread(2000,100000,1000,1000)
 
 # %% codecell
 get_spread(2500,1000,10,1000)
+'''

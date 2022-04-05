@@ -24,14 +24,35 @@ def get_rms(data):
     rm = np.sum(squares)/len(squares)
     return np.sqrt(rm)
 
+
+rms = []
+density=1000
+n=50
+radiuses = list(range(10,500,10))
+for radius in radiuses:
+    expected,data = get_model_data(density,n,radius)
+
+    data = data[find_outliers(data)]
+
+    #means.append(np.mean(data))
+
+    rms.append(get_rms(data))
+
+model_data = [rms_model(n,density,radius) for radius in radiuses]
+
+plt.plot(radiuses,model_data,label="model",alpha=0.5)
+plt.plot(radiuses,rms,label="data",alpha=0.5)
+#plt.show()
+'''
+
 radiuses = list(range(10,500,10))
 
-with open("std_data_2.txt","w") as f:
+with open("std_data_3.txt","w") as f:
 
-    for density in range(100,300,50):
+    for density in range(500,501,50):
         print("Density = ",density)
 
-        for n in range(10,51,5):
+        for n in range(10,11,5):
             print(" n = ",n)
             total_data = []
             for i in range(2):
@@ -71,5 +92,6 @@ with open("std_data_2.txt","w") as f:
             #plt.plot(radiuses,best,label="avg" + str(n),zorder=1)
             plt.plot(radiuses,y_new,label="model" + str(n) +"density" + str(density),zorder=1)
 
+'''
 plt.legend()
 plt.show()

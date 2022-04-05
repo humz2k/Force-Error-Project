@@ -8,7 +8,7 @@ from scipy import constants
 import matplotlib.pyplot as plt
 # %% codecell
 
-def get_programmatic(density=None,radius=None,n_particles=None):
+def get_programmatic(density=None,radius=None,n_particles=None,point="radius"):
     radius,particles = get_particles(n_particles=n_particles,density=density,radius=radius)
 
     mass_particles = (density * (radius ** 3))/n_particles
@@ -17,7 +17,10 @@ def get_programmatic(density=None,radius=None,n_particles=None):
     #print(particles,radius)
 
     total = 0
-    start_point = np.array([[radius,0,0]])
+    if point == "radius":
+        start_point = np.array([[radius,0,0]])
+    elif point == "center":
+        start_point = np.array([[0,0,0]])
     #print(particles)
     #print(start_point)
     dist = -constants.G * (mass_particles**2)/spatial.distance.cdist(particles,start_point)
@@ -36,9 +39,9 @@ def get_programmatic(density=None,radius=None,n_particles=None):
     #return total
 # %% codecell
 
-def get_diff(n_particles,density,radius):
+def get_diff(n_particles,density,radius,point="radius"):
     theory = get_phi(n_particles,density,radius)
-    programmatic = get_programmatic(n_particles=n_particles,density=density,radius=radius)
+    programmatic = get_programmatic(n_particles=n_particles,density=density,radius=radius,point=point)
     return theory-programmatic,theory,programmatic
 
 # %% codecell
