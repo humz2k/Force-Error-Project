@@ -14,7 +14,7 @@ def potential_model(n_particles,density,radius,a=1.5e10,b=5):
 
 def std_model(n_particles,density,radius,a=-0.0137,b=18,c=5):
     #const = a * n_particles
-    const1 = math.e**(a*density+b)
+    const1 = (a*density+b)
 
     return ((radius**c)/const1)
 

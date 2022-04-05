@@ -155,7 +155,7 @@ def plot_calculated_modeled_diff_n_potential(density,radius,repeats=1,step=10,st
         print(max,"at",n)
         diff_plot.bar(xs,np.abs(programs-modeled))
         plt.show()
-# %% codecell 
+# %% codecell
 plot_radius_potential(100,10,repeats=1)
 # %% codecell
 plot_n_potential(100,100,upper_limit=3000)
