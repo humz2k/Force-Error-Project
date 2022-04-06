@@ -3,43 +3,81 @@
 from calculations import *
 from model import *
 import matplotlib.pyplot as plt
+import numpy as np
 
 # %% codecell
 
-def plot_radius_potential(density,n_particles,model=potential_model,step=10,repeats=1,start=10,upper_limit=2000,point="radius"):
-    diffs = []
-    theorys = []
-    programs = []
-    xs = []
-    for i in range(start,upper_limit,step):
-        xs.append(i)
-        theorys.append(get_phi(n_particles=n_particles,density=density,radius=i))
-        diff = 0
-        programmatics = 0
-        for j in range(repeats):
-            temp,theory,programmatic = get_diff(n_particles=n_particles,density=density,radius=i,point=point)
-            programmatics += programmatic
-            diff += temp
-        programmatics = programmatics/repeats
-        programs.append(programmatics)
-        diff = abs(diff/repeats)
-        diffs.append(diff)
+def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_model,show_theory=False,step=10,repeats=1,start=10,upper_limit=2000):
+    if not (type(density) is list or isinstance(density, np.ndarray)):
+        density = [density]
 
-    modeled = np.array([model(n_particles,density,radius) for radius in range(start,upper_limit)])
+    if not (type(n_particles) is list or isinstance(n_particles, np.ndarray)):
+        n_particles = [n_particles]
+
+    if not (type(point) is list or isinstance(point, np.ndarray)):
+        point = [point]
 
     fig, (overlay_plot) = plt.subplots(1,1)
+    for r in point:
+        for n in n_particles:
+            for p in density:
+                programs = []
+                xs = range(start,upper_limit,step)
+                theorys = []
+                for i in xs:
+                    if show_theory:
+                        theorys.append(get_phi(density=p,radius=i,point=r))
+                    programmatics = 0
+                    for j in range(repeats):
+                        programmatic = get_programmatic(density=p,radius=i,n_particles=n,point=r)
+                        programmatics += programmatic
+                    programmatics = programmatics/repeats
+                    programs.append(programmatics)
 
-    overlay_plot.plot(list(range(start,upper_limit)),modeled,alpha=0.8, label = "Modeled")
-    overlay_plot.plot(xs,programs,alpha=0.8, label = "Calculated")
-    overlay_plot.plot(xs,theorys,alpha=0.8, label = "Theoretical")
+                label = "("
+                if len(n_particles) > 1:
+                    label += "n=" + str(n)
+                    if len(density) > 1:
+                        label += ","
+                if len(density) > 1:
+                    label += "p=" + str(p)
+                    if len(point) > 1:
+                        label += ","
+                if len(point) > 1:
+                    label += "d="+str(r) +"r"
+                label += ")"
+                if len(n_particles) == 1 and len(density) == 1:
+                    title = ""
+
+                if model != None:
+                    modeled = np.array([model(n,p,radius) for radius in xs])
+                    overlay_plot.plot(list(range(start,upper_limit)),modeled,alpha=0.8, label = "MODL" + label)
+
+                if model != None or show_theory:
+                    mctslabel = "MCTS" + label
+                else:
+                    mctslabel = label
+                overlay_plot.plot(xs,programs,alpha=0.8, label = mctslabel)
+                if show_theory:
+                    overlay_plot.plot(xs,theorys,alpha=0.8, label = "THRY" + label)
+
     overlay_plot.set_xlabel('Radius')
     overlay_plot.set_ylabel('Potential')
-    overlay_plot.legend(loc ="upper right")
-    overlay_plot.set_title('Variable Radius, Density = ' + str(density) + ', N = ' + str(n_particles) + ', Average of = ' + str(repeats) + ', Measured from ' + point, pad=12)
+    overlay_plot.legend(loc ="lower left")
+    title = 'varying r,sims=' + str(repeats)
+    if len(n_particles) == 1:
+        title += ",n=" + str(n_particles[0])
+    if len(density) == 1:
+        title += ",p=" + str(n_particles[0])
+    if len(point) == 1:
+        title += ',d=' + str(point[0]) + 'r'
+    overlay_plot.set_title(title,fontsize=10, pad=12)
 
     fig.suptitle('Theoretical vs Calculated vs Modeled',fontsize=16)
     fig.tight_layout()
     plt.show()
+
+plot_radius_potential(density=100,n_particles=10,point=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],repeats=100,model=None,start=400,upper_limit=500)
 
 def plot_calculated_modeled_diff_radius_potential(density,n_particles,model=potential_model,step=10,repeats=1,start=10,upper_limit=2000,point="radius"):
     diffs = []

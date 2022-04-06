@@ -8,34 +8,19 @@ from scipy import constants
 import matplotlib.pyplot as plt
 # %% codecell
 
-def get_programmatic(density=None,radius=None,n_particles=None,point="radius"):
-    radius,particles = get_particles(n_particles=n_particles,density=density,radius=radius)
-
+def get_programmatic(density=None,radius=None,n_particles=None,point=1):
+    particles = get_particles(n_particles=n_particles,radius=radius)
     mass_particles = (density * (radius ** 3))/n_particles
 
     #print("MASS",mass_particles**2)
     #print(particles,radius)
 
-    total = 0
-    if point == "radius":
-        start_point = np.array([[radius,0,0]])
-    elif point == "center":
-        start_point = np.array([[0,0,0]])
+    start_point = np.array([[int(radius*point),0,0]])
+
     #print(particles)
     #print(start_point)
     dist = -constants.G * (mass_particles**2)/spatial.distance.cdist(particles,start_point)
     return np.sum(dist)
-    '''
-    for i in range(particles.shape[0]-1):
-        start = np.array([particles[i]])
-        rest = particles[i+1:]
-        dist = -constants.G/spatial.distance.cdist(rest,start)
-        total += np.sum(dist)
-
-        for j in rest:
-            dist = np.linalg.norm(start-j)
-            total += -(constants.G / dist)
-    '''
     #return total
 # %% codecell
 

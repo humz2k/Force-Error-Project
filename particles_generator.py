@@ -24,16 +24,18 @@ def get_particle(radius):
     return np.asarray(pos).flatten()
     '''
 
-def get_particles(radius=None,n_particles=None,density=None): #density in particles / units ** 3
+def get_particles(radius=None,n_particles=None):
+    '''
     if radius == None:
         radius = ((3/4)*((n_particles/density)/math.pi))**(1/3)
+    '''
     particles = []
 
     for i in range(n_particles):
         temp = get_particle(radius)
         particles.append(temp)
 
-    return radius,np.array(particles)
+    return np.array(particles)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
