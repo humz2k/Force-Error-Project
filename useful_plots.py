@@ -51,18 +51,19 @@ def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_
                     legend = False
 
                 if model != None:
-                    print("yee")
                     modeled = np.array([model(n_particles=n,density=p,radius=radius,point=r) for radius in xs])
-                    overlay_plot.plot(xs,modeled,alpha=0.8, label = "MODL" + label)
+                    overlay_plot.plot(xs,modeled,alpha=1, label = "MODL" + label,zorder=1)
 
                 if model != None or show_theory:
                     mctslabel = "MCTS" + label
                 else:
                     mctslabel = label
-                overlay_plot.plot(xs,programs,alpha=0.8, label = mctslabel)
+                overlay_plot.plot(xs,programs,alpha=0.8, label = mctslabel,zorder=0)
                 if show_theory:
-                    overlay_plot.plot(xs,theorys,alpha=0.8, label = "THRY" + label)
+                    overlay_plot.plot(xs,theorys,alpha=0.8, label = "THRY" + label,zorder=0)
 
+    if model != None or show_theory:
+        legend = True
     overlay_plot.set_xlabel('Radius')
     overlay_plot.set_ylabel('Potential')
     if legend:
