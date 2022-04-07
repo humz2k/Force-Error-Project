@@ -1,13 +1,22 @@
 import matplotlib.pyplot as plt
 import math
 
-def potential_model(n_particles,density,radius,a=1.5e10,b=5):
+def potential_model(n_particles=None,density=None,radius=None,point=None,a=1.5e10,b=5,c=-0.5,d=1,e=1):
     #const = a * n_particles
     inverse_density = (1/density)**2
     const1 = a * inverse_density
     const1 *= n_particles
 
-    return -(radius**b)/const1
+    potential = -(radius**b)/const1
+
+    if point <= 1:
+        #point = 1-point
+        #scaler = c * point**2 + d * point + e
+        scaler = 1.5 - 0.5*(point**2)
+    else:
+        scaler = 1/point
+
+    return potential * scaler
     #x = radius**(inverse_density*const)
     #return (-x)/5
     #return -radius**(((1/density)**2)*(a * n_particles))/b
