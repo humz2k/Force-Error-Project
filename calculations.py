@@ -12,16 +12,25 @@ def get_programmatic(density=None,radius=None,n_particles=None,point=1):
     particles = get_particles(n_particles=n_particles,radius=radius)
     mass_particles = (density * (radius ** 3))/n_particles
 
-    #print("MASS",mass_particles**2)
-    #print(particles,radius)
-
     start_point = np.array([[int(radius*point),0,0]])
 
-    #print(particles)
-    #print(start_point)
     dist = -constants.G * (mass_particles**2)/spatial.distance.cdist(particles,start_point)
     return np.sum(dist)
-    #return total
+
+
+def get_program_for_particles(density=None,radius=None,n_particles=None):
+    particles = get_particles(n_particles=n_particles,radius=radius)
+    mass_particles = (density * (radius ** 3))/n_particles
+    rs = []
+    phis = []
+    for idx,i in enumerate(particles):
+        these_particles = np.vstack([particles[idx+1:],particles[:idx]])
+        r = spatial.distance.cdist([i],[np.zeros(3)])[0][0]
+        potentials = -constants.G * (mass_particles**2)/spatial.distance.cdist(these_particles,[i])
+        phi = np.sum(potentials)
+        rs.append(r)
+        phis.append(phi)
+    return rs,phis
 # %% codecell
 
 def get_diff(n_particles,density,radius,point="radius"):
@@ -32,6 +41,16 @@ def get_diff(n_particles,density,radius,point="radius"):
 # %% codecell
 
 if __name__ == "__main__":
+
+
+    print(get_program_for_particles(density=100,radius=10,n_particles=10))
+
+
+
+
+
+
+    '''
     diffs = []
     theorys = []
     programs = []
@@ -69,5 +88,6 @@ if __name__ == "__main__":
 
     fig.tight_layout()
     plt.show()
+    '''
 
 # %% codecell

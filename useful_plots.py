@@ -4,8 +4,40 @@ from calculations import *
 from model import *
 import matplotlib.pyplot as plt
 import numpy as np
+from math import floor,ceil
 
 # %% codecell
+
+def plot_r_potential(density=None,n_particles=None,radius=None,model=potential_model,file=None):
+
+    if not (type(radius) is list or isinstance(radius, np.ndarray)):
+        radius = [radius]
+
+    for idx,a in enumerate(radius):
+
+        rs,phis = get_program_for_particles(density=density,radius=a,n_particles=n_particles)
+        cont_r = list(range(floor(np.min(rs)),ceil(np.max(rs))+1))
+        #print([r/a for r in cont_r])
+        analytic = [get_phi(density=density,radius=a,point=r/a) for r in cont_r]
+        model = [potential_model(density=density,n_particles=n_particles,radius=a,point=r/a) for r in cont_r]
+        plt.plot(cont_r,model,zorder=1,color="red",alpha=0.5,label="model")
+        #plt.plot(cont_r,analytic,zorder=1,color="blue",alpha=0.5,label="analytic")
+        plt.scatter(rs,phis,zorder=0,s=0.5)
+
+    plt.xlabel("radius of particle")
+    plt.ylabel("potential at particle")
+    plt.title("Density="+str(density)+",N Particles="+str(n_particles)+",Radius of sphere="+str(radius[0]))
+    plt.legend()
+    if file != None:
+        plt.savefig(file)
+    else:
+        plt.show()
+
+p = 500
+n = 2000
+a = 100
+file = "p" + str(p) + "n" + str(n) + "a" + str(a)
+plot_r_potential(density=p,n_particles=n,radius=a,file=file)
 
 def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_model,show_theory=False,step=10,repeats=1,start=10,upper_limit=2000):
     if not (type(density) is list or isinstance(density, np.ndarray)):
@@ -373,4 +405,4 @@ def plot_particles(radius,n_particles,scale=20):
 
     plt.show()
 
-#plot_particles(100,100)
+#plot_particles(100,10

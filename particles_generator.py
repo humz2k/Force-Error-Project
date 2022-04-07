@@ -39,8 +39,8 @@ def get_particles(radius=None,n_particles=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    radius,particles = get_particles(1000,100)
-    print(radius)
+    particles = get_particles(1000,100)
+    print(particles)
     x = particles[:,0]
     y = particles[:,1]
     z = particles[:,2]
