@@ -44,7 +44,7 @@ def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_
                     if len(point) > 1:
                         label += ","
                 if len(point) > 1:
-                    label += "d="+str(r) +"r"
+                    label += "r="+str(r) +"a"
                 label += ")"
                 if len(n_particles) == 1 and len(density) == 1 and len(point) == 1:
                     label = ""
@@ -67,13 +67,13 @@ def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_
     overlay_plot.set_ylabel('Potential')
     if legend:
         overlay_plot.legend(loc ="lower left")
-    title = 'varying r,sims=' + str(repeats)
+    title = 'varying a,sims=' + str(repeats)
     if len(n_particles) == 1:
         title += ",n=" + str(n_particles[0])
     if len(density) == 1:
         title += ",p=" + str(density[0])
     if len(point) == 1:
-        title += ',d=' + str(point[0]) + 'r'
+        title += ',r=' + str(point[0]) + 'a'
     overlay_plot.set_title(title,fontsize=10, pad=12)
 
     fig.suptitle('Radius/Potential',fontsize=16)
@@ -146,7 +146,7 @@ def plot_n_potential(density=None,radius=None,point=1,show_theory=False,model=po
 
                 label = "("
                 if len(radius) > 1:
-                    label += "r=" + str(a)
+                    label += "a=" + str(a)
                     if len(density) > 1:
                         label += ","
                 if len(density) > 1:
@@ -154,7 +154,7 @@ def plot_n_potential(density=None,radius=None,point=1,show_theory=False,model=po
                     if len(point) > 1:
                         label += ","
                 if len(point) > 1:
-                    label += "d="+str(r) +"r"
+                    label += "r="+str(r) +"a"
                 label += ")"
                 if len(radius) == 1 and len(density) == 1 and len(point) == 1:
                     label = ""
@@ -177,11 +177,11 @@ def plot_n_potential(density=None,radius=None,point=1,show_theory=False,model=po
     overlay_plot.legend(loc ="lower right")
     title = 'varying n,sims=' + str(repeats)
     if len(radius) == 1:
-        title += ",r=" + str(radius[0])
+        title += ",a=" + str(radius[0])
     if len(density) == 1:
         title += ",p=" + str(density[0])
     if len(point) == 1:
-        title += ',d=' + str(point[0]) + 'r'
+        title += ',r=' + str(point[0]) + 'a'
     overlay_plot.set_title(title, pad=12)
 
     fig.suptitle('N Particles/Potential',fontsize=16)
@@ -225,7 +225,7 @@ def plot_calculated_modeled_diff_n_potential(density=None,radius=None,point=1,re
         else:
             diff_plot.set_ylim([-ylim,ylim])
     diff_plot.legend(loc ="upper right")
-    diff_plot.set_title('varying n,p= ' + str(density) + ',r= ' + str(radius) + ',d=' + str(point) + 'r', pad=12)
+    diff_plot.set_title('varying n,p= ' + str(density) + ',a= ' + str(radius) + ',r=' + str(point) + 'a', pad=12)
 
     fig.suptitle('Calculated/Modeled Difference for N Particles/Potential',fontsize=16)
     plt.legend()
