@@ -8,29 +8,55 @@ from scipy import constants
 import matplotlib.pyplot as plt
 # %% codecell
 
-def get_programmatic(density=None,radius=None,n_particles=None,point=1):
+def get_programmatic(density=None,radius=None,n_particles=None,point=1,eps=0):
     particles = get_particles(n_particles=n_particles,radius=radius)
-    mass_particles = (density * (radius ** 3))/n_particles
+    vol = (4/3) * math.pi * (radius ** 3)
+    mass_particles = (density * vol)/n_particles
 
     start_point = np.array([[int(radius*point),0,0]])
-
-    dist = -constants.G * (mass_particles**2)/spatial.distance.cdist(particles,start_point)
+    if eps == 0:
+        r_mul = 1/spatial.distance.cdist(particles,start_point)
+    else:
+        r_mul = 1/((spatial.distance.cdist(particles,start_point)**2 + eps**2)**(1/2))
+    dist = (-1) * constants.G * (mass_particles) * r_mul
     return np.sum(dist)
 
 
-def get_program_for_particles(density=None,radius=None,n_particles=None):
+def get_program_for_particles(density=None,radius=None,n_particles=None,eps=0):
     particles = get_particles(n_particles=n_particles,radius=radius)
-    mass_particles = (density * (radius ** 3))/n_particles
+    #print("p",particles)
+    vol = (4/3) * math.pi * (radius ** 3)
+    mass_particles = (density * vol)/n_particles
     rs = []
     phis = []
     for idx,i in enumerate(particles):
         these_particles = np.vstack([particles[idx+1:],particles[:idx]])
-        r = spatial.distance.cdist([i],[np.zeros(3)])[0][0]
-        potentials = -constants.G * (mass_particles**2)/spatial.distance.cdist(these_particles,[i])
+        #print(np.linalg.norm(these_particles[0] - i))
+        #print(i,these_particles[0])
+        #print(spatial.distance.cdist(these_particles,[i]))
+
+
+        if eps == 0:
+            r_mul = spatial.distance.cdist(these_particles,[i])
+        else:
+            r_mul = (spatial.distance.cdist(these_particles,[i])**2 + eps**2)**(1/2)
+
+        #print("mul",r_mul)
+
+        potentials = (-1) * constants.G * (mass_particles**1)/r_mul
+
+        #print("po",potentials)
+
         phi = np.sum(potentials)
+        r = spatial.distance.cdist([i],[np.zeros(3)])[0][0]
         rs.append(r)
         phis.append(phi)
     return rs,phis
+
+#rs,phis = get_program_for_particles(density=30,radius=10,n_particles=2)
+#print(phis)
+#print([get_phi(density=30,radius=10,point=i/10) for i in rs])
+
 # %% codecell
 
 def get_diff(n_particles,density,radius,point="radius"):
@@ -43,7 +69,7 @@ def get_diff(n_particles,density,radius,point="radius"):
 if __name__ == "__main__":
 
 
-    print(get_program_for_particles(density=100,radius=10,n_particles=10))
+    #print(get_program_for_particles(density=100,radius=10,n_particles=10))
 
 
 

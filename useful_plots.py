@@ -8,36 +8,72 @@ from math import floor,ceil
 
 # %% codecell
 
-def plot_r_potential(density=None,n_particles=None,radius=None,model=potential_model,file=None):
+def plot_model_theory(density=None,n_particles=None,radius=None,model=potential_model,file=None):
+    if not (type(n_particles) is list or isinstance(n_particles, np.ndarray)):
+        n_particles = [n_particles]
+    rs = [i/100 for i in range(0,101)]
+    analytic = [get_phi(density=density,radius=radius,point=r) for r in rs]
+    plt.plot(rs,analytic,'--',label="theoretical",linewidth=1.1)
+    for idx,n in enumerate(n_particles):
+        model = [potential_model(density=density,n_particles=n,radius=radius,point=r) for r in rs]
+        plt.plot(rs,model,label="n="+"{:.0e}".format(n),linewidth=0.7)
 
-    if not (type(radius) is list or isinstance(radius, np.ndarray)):
-        radius = [radius]
+    plt.title("Density="+str(density)+",Radius of sphere="+str(radius))
+    plt.xlabel("radius of particle")
+    plt.ylabel("potential at particle")
+    plt.legend(prop={'size': 6})
+    plt.show()
 
-    for idx,a in enumerate(radius):
+'''
+plot_model_theory(density=500,n_particles=list(range(10000000,100000000,10000000)),radius=100)
+'''
 
-        rs,phis = get_program_for_particles(density=density,radius=a,n_particles=n_particles)
+def plot_r_potential(density=None,n_particles=None,radius=None,model=potential_model,file=None,eps=0):
+
+    if not (type(n_particles) is list or isinstance(n_particles, np.ndarray)):
+        n_particles = [n_particles]
+
+    min = radius
+    max = 0
+    for idx,n in enumerate(n_particles):
+
+        rs,phis = get_program_for_particles(density=density,radius=radius,n_particles=n,eps=eps)
         cont_r = list(range(floor(np.min(rs)),ceil(np.max(rs))+1))
+        if np.min(rs) < min:
+            min = np.min(rs)
+        if np.max(rs) > max:
+            max = np.max(rs)
         #print([r/a for r in cont_r])
-        analytic = [get_phi(density=density,radius=a,point=r/a) for r in cont_r]
-        model = [potential_model(density=density,n_particles=n_particles,radius=a,point=r/a) for r in cont_r]
-        plt.plot(cont_r,model,zorder=1,color="red",alpha=0.5,label="model")
-        #plt.plot(cont_r,analytic,zorder=1,color="blue",alpha=0.5,label="analytic")
-        plt.scatter(rs,phis,zorder=0,s=0.5)
+        if model != None:
+            model = [potential_model(density=density,n_particles=n,radius=radius,point=r/radius) for r in cont_r]
+            if idx > 0:
+                plt.plot(cont_r,model,zorder=1,color="red",alpha=0.5)
+                #plt.plot(cont_r,analytic,zorder=1,color="blue",alpha=0.5)
+            else:
+                plt.plot(cont_r,model,zorder=1,color="red",alpha=0.5,label="model")
+
+        plt.scatter(rs,phis,zorder=0,s=0.5,label="(n="+str(n)+")")
+
+    cont_r = list(range(floor(min),ceil(max)+1))
+    analytic = [get_phi(density=density,radius=radius,point=r/radius) for r in cont_r]
+    plt.plot(cont_r,analytic,zorder=1,color="blue",alpha=0.5,label="theoretical")
 
     plt.xlabel("radius of particle")
     plt.ylabel("potential at particle")
-    plt.title("Density="+str(density)+",N Particles="+str(n_particles)+",Radius of sphere="+str(radius[0]))
-    plt.legend()
+    plt.title("Density="+str(density)+",N Particles="+str(n_particles)+",Radius of sphere="+str(radius))
+    plt.legend(prop={'size': 6})
     if file != None:
         plt.savefig(file)
     else:
         plt.show()
 
 p = 500
-n = 2000
+n = [500,1000,1500]
+#n = 100
 a = 100
 file = "p" + str(p) + "n" + str(n) + "a" + str(a)
-plot_r_potential(density=p,n_particles=n,radius=a,file=file)
+plot_r_potential(density=p,n_particles=n,radius=a,eps=0,model=None,file=file)
+
 
 def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_model,show_theory=False,step=10,repeats=1,start=10,upper_limit=2000):
     if not (type(density) is list or isinstance(density, np.ndarray)):
@@ -406,3 +442,4 @@ def plot_particles(radius,n_particles,scale=20):
     plt.show()
 
 #plot_particles(100,10
+""
