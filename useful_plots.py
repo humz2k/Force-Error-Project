@@ -1,34 +1,13 @@
 # %% codecell
 
 from calculations import *
-from model import *
 import matplotlib.pyplot as plt
 import numpy as np
 from math import floor,ceil
 
 # %% codecell
 
-def plot_model_theory(density=None,n_particles=None,radius=None,model=potential_model,file=None):
-    if not (type(n_particles) is list or isinstance(n_particles, np.ndarray)):
-        n_particles = [n_particles]
-    rs = [i/100 for i in range(0,101)]
-    analytic = [get_phi(density=density,radius=radius,point=r) for r in rs]
-    plt.plot(rs,analytic,'--',label="theoretical",linewidth=1.1)
-    for idx,n in enumerate(n_particles):
-        model = [potential_model(density=density,n_particles=n,radius=radius,point=r) for r in rs]
-        plt.plot(rs,model,label="n="+"{:.0e}".format(n),linewidth=0.7)
-
-    plt.title("Density="+str(density)+",Radius of sphere="+str(radius))
-    plt.xlabel("radius of particle")
-    plt.ylabel("potential at particle")
-    plt.legend(prop={'size': 6})
-    plt.show()
-
-'''
-plot_model_theory(density=500,n_particles=list(range(10000000,100000000,10000000)),radius=100)
-'''
-
-def plot_r_potential(density=None,n_particles=None,radius=None,model=potential_model,file=None,eps=0):
+def plot_r_potential(density=None,n_particles=None,radius=None,file=None,eps=0):
 
     if not (type(n_particles) is list or isinstance(n_particles, np.ndarray)):
         n_particles = [n_particles]
@@ -43,14 +22,6 @@ def plot_r_potential(density=None,n_particles=None,radius=None,model=potential_m
             min = np.min(rs)
         if np.max(rs) > max:
             max = np.max(rs)
-        #print([r/a for r in cont_r])
-        if model != None:
-            model = [potential_model(density=density,n_particles=n,radius=radius,point=r/radius) for r in cont_r]
-            if idx > 0:
-                plt.plot(cont_r,model,zorder=1,color="red",alpha=0.5)
-                #plt.plot(cont_r,analytic,zorder=1,color="blue",alpha=0.5)
-            else:
-                plt.plot(cont_r,model,zorder=1,color="red",alpha=0.5,label="model")
 
         plt.scatter(rs,phis,zorder=0,s=0.5,label="(n="+str(n)+")")
 
@@ -72,10 +43,10 @@ n = [500,1000,1500]
 #n = 100
 a = 100
 file = "p" + str(p) + "n" + str(n) + "a" + str(a)
-plot_r_potential(density=p,n_particles=n,radius=a,eps=0,model=None,file=file)
+plot_r_potential(density=p,n_particles=n,radius=a,eps=0,file=file)
 
 
-def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_model,show_theory=False,step=10,repeats=1,start=10,upper_limit=2000):
+def plot_radius_potential(density=None,n_particles=None,point=1,show_theory=False,step=10,repeats=1,start=10,upper_limit=2000):
     if not (type(density) is list or isinstance(density, np.ndarray)):
         density = [density]
 
@@ -118,11 +89,7 @@ def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_
                     label = ""
                     legend = False
 
-                if model != None:
-                    modeled = np.array([model(n_particles=n,density=p,radius=radius,point=r) for radius in xs])
-                    overlay_plot.plot(xs,modeled,alpha=1, label = "MODL" + label,zorder=1)
-
-                if model != None or show_theory:
+                if show_theory:
                     mctslabel = "MCTS" + label
                 else:
                     mctslabel = label
@@ -130,7 +97,7 @@ def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_
                 if show_theory:
                     overlay_plot.plot(xs,theorys,alpha=0.8, label = "THRY" + label,zorder=0)
 
-    if model != None or show_theory:
+    if show_theory:
         legend = True
     overlay_plot.set_xlabel('Radius')
     overlay_plot.set_ylabel('Potential')
@@ -149,44 +116,7 @@ def plot_radius_potential(density=None,n_particles=None,point=1,model=potential_
     fig.tight_layout()
     plt.show()
 
-#plot_radius_potential(density=100,n_particles=10,point=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],repeats=100,model=None,start=400,upper_limit=500)
-
-def plot_calculated_modeled_diff_radius_potential(density,n_particles,model=potential_model,step=10,repeats=1,start=10,upper_limit=2000,point="radius"):
-    diffs = []
-    theorys = []
-    programs = []
-    xs = []
-    for i in range(start,upper_limit,step):
-        xs.append(i)
-        theorys.append(get_phi(n_particles=n_particles,density=density,radius=i))
-        diff = 0
-        programmatics = 0
-        for j in range(repeats):
-            temp,theory,programmatic = get_diff(n_particles=n_particles,density=density,radius=i,point=point)
-            programmatics += programmatic
-            diff += temp
-        programmatics = programmatics/repeats
-        programs.append(programmatics)
-        diff = abs(diff/repeats)
-        diffs.append(diff)
-
-    modeled = np.array([model(n_particles,density,radius) for radius in xs])
-
-    fig, (overlay_plot) = plt.subplots(1,1)
-
-    #overlay_plot.plot(list(range(start,upper_limit)),modeled,alpha=0.4, label = "Modeled")
-    overlay_plot.plot(xs,programs-modeled,alpha=0.4, label = "Calculated - Modeled")
-    #overlay_plot.plot(xs,theorys,alpha=0.8, label = "Theoretical")
-    overlay_plot.set_xlabel('Radius')
-    overlay_plot.set_ylabel('Potential')
-    overlay_plot.legend(loc ="upper right")
-    overlay_plot.set_title('Variable Radius, Density = ' + str(density) + ', N = ' + str(n_particles) + ', Average of = ' + str(repeats) + ', Measured from ' + point, pad=12)
-
-    fig.suptitle('Calculated/Modeled Difference',fontsize=16)
-    fig.tight_layout()
-    plt.show()
-
-def plot_n_potential(density=None,radius=None,point=1,show_theory=False,model=potential_model,repeats=1,step=10,start=10,upper_limit=3000):
+def plot_n_potential(density=None,radius=None,point=1,show_theory=False,repeats=1,step=10,start=10,upper_limit=3000):
     if not (type(density) is list or isinstance(density, np.ndarray)):
         density = [density]
 
@@ -228,12 +158,7 @@ def plot_n_potential(density=None,radius=None,point=1,show_theory=False,model=po
                 if len(radius) == 1 and len(density) == 1 and len(point) == 1:
                     label = ""
 
-                if model != None:
-                    modeled = np.array([model(n_particles=n,density=p,radius=a,point=r) for n in xs])
-                    #print(r,np.mean(np.array(programs)/modeled))
-                    overlay_plot.plot(xs,modeled,alpha=0.8, label = "MODL" + label)
-
-                if model != None or show_theory:
+                if show_theory:
                     mctslabel = "MCTS" + label
                 else:
                     mctslabel = label
@@ -254,137 +179,6 @@ def plot_n_potential(density=None,radius=None,point=1,show_theory=False,model=po
     overlay_plot.set_title(title, pad=12)
 
     fig.suptitle('N Particles/Potential',fontsize=16)
-    fig.tight_layout()
-    plt.show()
-
-#plot_n_potential(density=[100],radius=[100],point=[0.1,0.3,0.6,0.9,1],repeats=30,start=10,upper_limit=50,step=2,model=potential_model)
-
-def plot_calculated_modeled_diff_n_potential(density=None,radius=None,point=1,repeats=1,step=10,start=10,upper_limit=3000,ylim=None,square=True):
-
-    if not (type(repeats) is list or isinstance(repeats, np.ndarray)):
-        repeats = [repeats]
-
-    fig, (diff_plot) = plt.subplots(1,1)
-
-    for zorder,repeat in enumerate(repeats):
-        programs = []
-        xs = list(range(start,upper_limit,step))
-        theorys = [get_phi(density=density,radius=radius,point=point)] * len(xs)
-        for n in xs:
-            programmatics = 0
-            for j in range(repeat):
-                programmatic = get_programmatic(density=density,radius=radius,n_particles=n,point=point)
-                programmatics += programmatic
-            programmatics = programmatics/repeat
-            programs.append(programmatics)
-        programs = np.array(programs)
-        modeled = np.array([potential_model(n,density,radius,point=point) for n in xs])
-        diff = programs-modeled
-        if square:
-            diff = diff**2
-        diff_plot.plot(xs,diff,label="sims="+str(repeat),alpha=1,zorder=zorder)
-    #diff_plot.plot(list(range(start,n)),modeled,alpha=0.4, label = "Modeled")
-    #diff_plot.plot(xs,theorys,alpha=0.8, label = "Theoretical")
-
-    diff_plot.set_xlabel('N Particles')
-    diff_plot.set_ylabel('Potential')
-    if ylim != None:
-        if square:
-            diff_plot.set_ylim([-0.01*ylim,ylim])
-        else:
-            diff_plot.set_ylim([-ylim,ylim])
-    diff_plot.legend(loc ="upper right")
-    diff_plot.set_title('varying n,p= ' + str(density) + ',a= ' + str(radius) + ',r=' + str(point) + 'a', pad=12)
-
-    fig.suptitle('Calculated/Modeled Difference for N Particles/Potential',fontsize=16)
-    plt.legend()
-    fig.tight_layout()
-    plt.show()
-
-#plot_calculated_modeled_diff_n_potential(density=100,radius=100,point=1,repeats=[10,50,100,300],upper_limit=100,step=1,ylim=1000)
-
-def get_rms_data(density,n_particles,radius,repeats=500):
-
-    expected = potential_model(n_particles,density,radius)
-
-    data = []
-    for rep in range(repeats):
-        temp,theory,programmatic = get_diff(n_particles=n_particles,density=density,radius=radius)
-        data.append(programmatic)
-
-    return expected,np.array(data)
-
-def find_outliers(data,m=1.5):
-    mean,std = np.mean(data),np.std(data)
-    return abs(data - mean) < abs(std*m)
-
-def get_rms(expected,data):
-    squares = (expected-data)**2
-    rm = np.sum(squares)/len(squares)
-    return np.sqrt(rm)
-
-def plot_rms_n_potential(density,radius,repeats=1,step=10,start=10,upper_limit=500,point="radius"):
-
-    rms = []
-    ns = list(range(start,upper_limit,step))
-    for n in ns:
-        temp_rms = 0
-        for i in range(repeats):
-            expected,data = get_rms_data(density,n,radius)
-
-            data = data[find_outliers(data)]
-
-            temp_rms += get_rms(expected,data)
-
-        temp_rms /= repeats
-
-        rms.append(temp_rms)
-
-    data = [rms_model(n,density,radius) for n in ns]
-
-    fig, (rms_plot) = plt.subplots(1,1)
-
-    plt.plot(ns,data,label="Modeled")
-    plt.plot(ns,rms,label="Calculated")
-    plt.legend()
-
-    rms_plot.set_title('Variable N, Density = ' + str(density) + ', Radius = ' + str(radius) + ', Average of = ' + str(repeats) + ', Step = ' + str(step) + ', Measured from ' + point, pad=12)
-    rms_plot.set_xlabel('N Particles')
-    rms_plot.set_ylabel('RMS Error')
-
-    fig.suptitle('Calculated vs Modeled RMS Error',fontsize=16)
-    fig.tight_layout()
-    plt.show()
-
-def plot_rms_diff_n_potential(density,radius,repeats=1,step=10,start=10,upper_limit=500,point="radius"):
-
-    rms = []
-    ns = list(range(start,upper_limit,step))
-    for n in ns:
-        temp_rms = 0
-        for i in range(repeats):
-            expected,data = get_rms_data(density,n,radius)
-
-            data = data[find_outliers(data)]
-
-            temp_rms += get_rms(expected,data)
-
-        temp_rms /= repeats
-
-        rms.append(temp_rms)
-
-    data = np.array([rms_model(n,density,radius) for n in ns])
-
-    fig, (rms_plot) = plt.subplots(1,1)
-
-    plt.plot(ns,rms-data,label="Calculated-Modeled")
-    plt.legend()
-
-    rms_plot.set_title('Variable N, Density = ' + str(density) + ', Radius = ' + str(radius) + ', Average of = ' + str(repeats) + ', Step = ' + str(step) + ', Measured from ' + point, pad=12)
-    rms_plot.set_xlabel('N Particles')
-    rms_plot.set_ylabel('Delta RMS Error')
-
-    fig.suptitle('Calculated/Modeled RMS Error Difference',fontsize=16)
     fig.tight_layout()
     plt.show()
 
@@ -440,6 +234,3 @@ def plot_particles(radius,n_particles,scale=20):
     fig.tight_layout(w_pad=5)
 
     plt.show()
-
-#plot_particles(100,10
-""
