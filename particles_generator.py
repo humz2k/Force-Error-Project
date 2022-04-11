@@ -39,18 +39,34 @@ def get_particles(radius=None,n_particles=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    particles = get_particles(1000,100)
-    print(particles)
-    x = particles[:,0]
-    y = particles[:,1]
-    z = particles[:,2]
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    
 
-    ax.scatter(x, y, z, color='red')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
+    '''
+    for r in range(100,1000,100):
+        n = 100000
+        radius = r
+        particles = get_particles(radius=radius,n_particles=n)
+
+        bin_size = radius/100
+        bins = list(range(0,radius,math.ceil(bin_size)))
+        #print(bins)
+
+        rs = np.linalg.norm(particles,axis=1)
+        xs = [0] * len(rs)
+
+        ys = []
+        for i in bins:
+            j = rs[rs >= i]
+            j = j[j < i+bin_size]
+            ys.append(len(j))
+
+        plt.scatter(np.array(bins)/radius,ys,s=0.5)
+
+    xs = np.array(bins)/radius
+    ys = (xs*14.4)**3
+
+    plt.plot(xs,ys)
 
     plt.show()
+    '''
