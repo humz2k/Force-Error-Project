@@ -40,33 +40,35 @@ def get_particles(radius=None,n_particles=None):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    
+    n = 1000000
+    radius = 1000
+    particles = get_particles(radius=radius,n_particles=n)
 
-    '''
-    for r in range(100,1000,100):
-        n = 100000
-        radius = r
-        particles = get_particles(radius=radius,n_particles=n)
+    bin_size = radius/100
+    bins = list(range(0,radius,math.ceil(bin_size)))
+    #print(bins)
 
-        bin_size = radius/100
-        bins = list(range(0,radius,math.ceil(bin_size)))
-        #print(bins)
+    rs = np.linalg.norm(particles,axis=1)
+    xs = [0] * len(rs)
 
-        rs = np.linalg.norm(particles,axis=1)
-        xs = [0] * len(rs)
+    ys = []
+    for i in bins:
+        j = rs[rs >= i]
+        j = j[j < i+bin_size]
+        ys.append(len(j))
 
-        ys = []
-        for i in bins:
-            j = rs[rs >= i]
-            j = j[j < i+bin_size]
-            ys.append(len(j))
+    plt.scatter(np.array(bins)/radius,100*np.array(ys)/n,s=0.5)
 
-        plt.scatter(np.array(bins)/radius,ys,s=0.5)
-
+    z = np.polyfit(np.array(bins)/radius,np.array(ys)/n,2)
+    print(type(z))
+    print(z)
+    z = np.array([3,0,0])
+    p = np.poly1d(z)
     xs = np.array(bins)/radius
-    ys = (xs*14.4)**3
+    ys = p(xs)
+
+    print(p)
 
     plt.plot(xs,ys)
-
+    #plt.yscale('log')
     plt.show()
-    '''
