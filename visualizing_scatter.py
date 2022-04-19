@@ -66,7 +66,7 @@ def save_r_potential_plot(p,n,a,eps):
     file = "plots/potential_p" + str(p) + "n" + str(n) + "a" + str(a) + "eps" + str(eps).replace(".",",")
     plot_r_potential(density=p,n_particles=n,radius=a,file=file,eps=eps)
 
-save_scatter_plot(500,[100,1000,10000],100,1)
+#save_scatter_plot(10,[1000,2000,3000],100,2)
 
-#save_r_potential_plot(500,[100,1000,3000],100,1)
-#save_r_potential_plot(500,[500,1000,1500],100,0.5)
+#save_r_potential_plot(500,[100,1000,3000],100,10)
+save_r_potential_plot(500,[500,1000,1500],100,10)
