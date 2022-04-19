@@ -38,12 +38,14 @@ def plot_r_potential(density=None,n_particles=None,radius=None,file=None,eps=0):
     else:
         plt.show()
 
+'''
 p = 30
 n = [100,1000,3000]
 #n = 100
 a = 10
 file = "plots/p" + str(p) + "n" + str(n) + "a" + str(a)
 plot_r_potential(density=p,n_particles=n,radius=a,eps=0,file=file)
+'''
 
 
 def plot_radius_potential(density=None,n_particles=None,point=1,show_theory=False,step=10,repeats=1,start=10,upper_limit=2000):
