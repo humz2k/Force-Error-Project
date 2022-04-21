@@ -24,28 +24,26 @@ def get_programmatic(density=None,radius=None,n_particles=None,point=1,eps=0):
 
 def get_program_for_particles(density=None,radius=None,n_particles=None,eps=0):
     particles = get_particles(n_particles=n_particles,radius=radius)
-    #print("p",particles)
     vol = (4/3) * math.pi * (radius ** 3)
     mass_particles = (density * vol)/n_particles
     rs = []
     phis = []
+    spatials = []
     for idx,i in enumerate(particles):
         these_particles = np.vstack([particles[idx+1:],particles[:idx]])
-        #print(np.linalg.norm(these_particles[0] - i))
-        #print(i,these_particles[0])
-        #print(spatial.distance.cdist(these_particles,[i]))
-
+        spatials.append(spatial.distance.cdist(these_particles,[i]))
+    average_r = np.mean(np.array(spatials).flatten())
+    #print(average_r)
+    #print(eps/average_r)
+    for i,dist in zip(particles,spatials):
+        #these_particles = np.vstack([particles[idx+1:],particles[:idx]])
 
         if eps == 0:
-            r_mul = spatial.distance.cdist(these_particles,[i])
+            r_mul = dist
         else:
-            r_mul = (spatial.distance.cdist(these_particles,[i])**2 + eps**2)**(1/2)
-
-        #print("mul",r_mul)
+            r_mul = (dist**2 + (eps/average_r)**2)**(1/2)
 
         potentials = (-1) * constants.G * (mass_particles**1)/r_mul
-
-        #print("po",potentials)
 
         phi = np.sum(potentials)
         r = spatial.distance.cdist([i],[np.zeros(3)])[0][0]
