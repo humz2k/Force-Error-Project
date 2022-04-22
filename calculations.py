@@ -51,11 +51,61 @@ def get_program_for_particles(density=None,radius=None,n_particles=None,eps=0):
         phis.append(phi)
     return rs,phis
 
+def get_program_eps(density=None,radius=None,n_particles=None,eps=[0]):
+    particles = get_particles(n_particles=n_particles,radius=radius)
+    vol = (4/3) * math.pi * (radius ** 3)
+    mass_particles = (density * vol)/n_particles
+    spatials = []
+
+
+    for idx,i in enumerate(particles):
+        these_particles = np.vstack([particles[idx+1:],particles[:idx]])
+        spatials.append(spatial.distance.cdist(these_particles,[i]))
+
+    average_r = (vol/n_particles)**(1/3)
+    print("stuff")
+    print(vol,n_particles)
+    print(vol/n_particles)
+    print(average_r)
+    separations = []
+    for i in spatials:
+        separations.append(np.min(i))
+    print("ah",np.mean(np.array(separations)))
+
+    #print(average_r)
+    #print(eps/average_r)
+
+
+    out = {}
+    for ep in eps:
+
+        print(ep/average_r)
+
+        rs = []
+        phis = []
+        for i,dist in zip(particles,spatials):
+            #these_particles = np.vstack([particles[idx+1:],particles[:idx]])
+
+            if ep == 0:
+                r_mul = dist
+            else:
+                r_mul = (dist**2 + (ep/average_r)**2)**(1/2)
+
+            potentials = (-1) * constants.G * (mass_particles**1)/r_mul
+
+            phi = np.sum(potentials)
+            r = spatial.distance.cdist([i],[np.zeros(3)])[0][0]
+            rs.append(r)
+            phis.append(phi)
+        out[ep] = (np.array(rs),np.array(phis))
+    #print(out)
+    return out
+
 #rs,phis = get_program_for_particles(density=30,radius=10,n_particles=2)
 #print(phis)
 #print([get_phi(density=30,radius=10,point=i/10) for i in rs])
 
-# %% codecell
+"A"# %% codecell
 
 def get_diff(n_particles,density,radius,point="radius"):
     theory = get_phi(n_particles,density,radius)
