@@ -5,7 +5,6 @@ import numpy as np
 import math
 from scipy import spatial
 from scipy import constants
-import matplotlib.pyplot as plt
 # %% codecell
 
 def get_programmatic(density=None,radius=None,n_particles=None,point=1,eps=0):
@@ -105,7 +104,7 @@ def get_program_eps(density=None,radius=None,n_particles=None,eps=[0]):
 #print(phis)
 #print([get_phi(density=30,radius=10,point=i/10) for i in rs])
 
-"A"# %% codecell
+# %% codecell
 
 def get_diff(n_particles,density,radius,point="radius"):
     theory = get_phi(n_particles,density,radius)
