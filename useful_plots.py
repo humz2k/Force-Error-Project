@@ -237,3 +237,5 @@ def plot_particles(radius,n_particles,scale=20):
     fig.tight_layout(w_pad=5)
 
     plt.show()
+
+plot_particles(100,100)

@@ -15,14 +15,6 @@ def get_particle(radius):
 
     return np.array([x,y,z])
 
-    '''
-    angle_x = math.radians(random.randint(0,360))
-    angle_z = math.radians(random.randint(0,360))
-    angle_y = math.radians(random.randint(0,360))
-    r = random.randint(0,radius)
-    pos = np.array([r,0,0]) * Ry(angle_y) * Rx(angle_x) * Rz(angle_z)
-    return np.asarray(pos).flatten()
-    '''
 
 def get_particles(radius=None,n_particles=None):
     '''
