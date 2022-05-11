@@ -2,6 +2,7 @@ import numpy as np
 import math
 from scipy import spatial
 from scipy import constants
+import matplotlib.pyplot as plt
 
 class Analytic(object):
     class Uniform(object):
@@ -42,19 +43,38 @@ class ParticleGenerator(object):
         return np.column_stack([x,y,z])
 
 class Ray:
-    def __init__(self,vector,length):
+    def __init__(self,vector=None,length=None):
+        assert length != None or vector != None
+        self.has_vector = False
+        if isinstance(vector,np.ndarray):
+            self.vector = np.reshape(vector/np.linalg.norm(vector),(1,) + vector.shape)
+            self.has_vector = True
         self.length = length
-        self.vector = np.reshape(vector/np.linalg.norm(vector),(1,) + vector.shape)
 
     def __call__(self,nsteps=25):
+        if self.has_vector:
+            rs = np.reshape(np.linspace(0,self.length,nsteps),(1,nsteps)).T
+            points = rs * self.vector
+            return points
+        else:
+            return self.rs(nsteps)
+
+    def rs(self,nsteps=25):
+        return np.linspace(0,self.length,nsteps)
+
+    def analytic_phis(self,sim,nsteps=25):
         rs = np.reshape(np.linspace(0,self.length,nsteps),(1,nsteps)).T
-        points = rs * self.vector
-        return points
+        points = rs * np.array([[1,0,0]])
+        analytic = np.zeros(points.shape[0],dtype=float)
+        for idx,pos in enumerate(points):
+            analytic[idx] = sim.analytic.phi(pos)
+        return analytic
 
 class __analytic__:
     def __init__(self,sim_args,distribution):
         self.sim_args = sim_args
         self.distribution = distribution
+
     def phi(self,pos):
         return self.distribution.analytic.phi(self.sim_args,pos)
 
@@ -93,6 +113,25 @@ class Simulation:
             analytic[idx] = self.analytic.phi(pos)
         return distribution,analytic
 
+def plot_ray(sim,vector,length,nsteps=25):
+    my_ray = Ray(vector,length)
+    dist,ana = sim1.phis(my_ray(nsteps))
+    rs = my_ray.rs(nsteps)/sim.r
+    plt.scatter(rs,dist,label="Vector"+str(my_ray.vector[0]),s=10,zorder=1)
+
+def angles2vectors(alphas,betas):
+    x = np.cos(alphas) * np.cos(betas)
+    z = np.sin(alphas) * np.cos(betas)
+    y = np.sin(betas)
+    return np.column_stack([x,y,z])
+
+def randangles(size=10):
+    return np.random.uniform(0,2*np.pi,size=size),np.random.uniform(0,2*np.pi,size=size)
+
 sim1 = Simulation(args(r=100,n=100,p=1000),Distribution(ParticleGenerator.Uniform,Analytic.Uniform))
-my_ray = Ray(np.array([1,1,1]),10)
-dist,ana = sim1.phis(my_ray())
+vecs = angles2vectors(*randangles())
+default_ray = Ray(vector=np.array([1,0,0]),length=200)
+for vec in vecs:
+    plot_ray(sim1,vec,200)
+plt.plot(default_ray.rs()/sim1.r,default_ray.analytic_phis(sim1),label="Analytic",zorder=0,color="red")
+plt.show()
