@@ -107,7 +107,7 @@ for n_particles in xs:
 
 fig, ((ax1), (ax2))  = plt.subplots(2, 1, sharex='col')
 
-fig.supxlabel("N Particles",fontsize=15)
+#fig.supxlabel("N Particles",fontsize=15)
 
 ax1.plot(xs,gpu,label="ModernGL float32",linewidth=1)
 ax1.plot(xs,scipy,label="Scipy float64",linewidth=1)
@@ -122,6 +122,7 @@ ax2.legend(prop={'size': 8},frameon=True)
 ax2.set_ylabel("Diff Scipy float64",fontsize=15)
 start, end = ax2.get_ylim()
 ax2.yaxis.set_ticks(np.linspace(start, end, 5))
+ax2.set_xlabel("N Particles")
 
 #plt.savefig("GPU vs Scipy with float64 diff")
 plt.show()
