@@ -56,7 +56,6 @@ def get_program_eps(density=None,radius=None,n_particles=None,eps=[0]):
     mass_particles = (density * vol)/n_particles
     spatials = []
 
-
     for idx,i in enumerate(particles):
         these_particles = np.vstack([particles[idx+1:],particles[:idx]])
         spatials.append(spatial.distance.cdist(these_particles,[i]))

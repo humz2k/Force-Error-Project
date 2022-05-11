@@ -17,10 +17,6 @@ def get_particle(radius):
 
 
 def get_particles(radius=None,n_particles=None):
-    '''
-    if radius == None:
-        radius = ((3/4)*((n_particles/density)/math.pi))**(1/3)
-    '''
     particles = []
 
     for i in range(n_particles):
