@@ -117,7 +117,7 @@ def plot_ray(sim,vector,length,nsteps=25):
     my_ray = Ray(vector,length)
     dist,ana = sim.phis(my_ray(nsteps))
     rs = my_ray.rs(nsteps)/sim.r
-    plt.scatter(rs,dist,label="Vector"+str(my_ray.vector[0]),s=10,zorder=1)
+    plt.scatter(rs,dist,label="Vector"+str(my_ray.vector[0])+"n"+str(sim.r),s=10,zorder=1)
 
 def angles2vectors(alphas,betas):
     x = np.cos(alphas) * np.cos(betas)
