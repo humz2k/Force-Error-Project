@@ -115,7 +115,7 @@ class Simulation:
 
 def plot_ray(sim,vector,length,nsteps=25):
     my_ray = Ray(vector,length)
-    dist,ana = sim1.phis(my_ray(nsteps))
+    dist,ana = sim.phis(my_ray(nsteps))
     rs = my_ray.rs(nsteps)/sim.r
     plt.scatter(rs,dist,label="Vector"+str(my_ray.vector[0]),s=10,zorder=1)
 
@@ -128,10 +128,11 @@ def angles2vectors(alphas,betas):
 def randangles(size=10):
     return np.random.uniform(0,2*np.pi,size=size),np.random.uniform(0,2*np.pi,size=size)
 
-sim1 = Simulation(args(r=100,n=100,p=1000),Distribution(ParticleGenerator.Uniform,Analytic.Uniform))
-vecs = angles2vectors(*randangles())
-default_ray = Ray(vector=np.array([1,0,0]),length=200)
-for vec in vecs:
-    plot_ray(sim1,vec,200)
-plt.plot(default_ray.rs()/sim1.r,default_ray.analytic_phis(sim1),label="Analytic",zorder=0,color="red")
-plt.show()
+if __name__ == "__main__":
+    sim1 = Simulation(args(r=100,n=100,p=1000),Distribution(ParticleGenerator.Uniform,Analytic.Uniform))
+    vecs = angles2vectors(*randangles())
+    default_ray = Ray(vector=np.array([1,0,0]),length=200)
+    for vec in vecs:
+        plot_ray(sim1,vec,200)
+    plt.plot(default_ray.rs()/sim1.r,default_ray.analytic_phis(sim1),label="Analytic",zorder=0,color="red")
+    plt.show()
