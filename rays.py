@@ -135,4 +135,6 @@ if __name__ == "__main__":
     for vec in vecs:
         plot_ray(sim1,vec,200)
     plt.plot(default_ray.rs()/sim1.r,default_ray.analytic_phis(sim1),label="Analytic",zorder=0,color="red")
+    plt.xlabel("R")
+    plt.ylabel("Phi")
     plt.show()
