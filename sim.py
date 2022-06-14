@@ -16,6 +16,23 @@ class Analytic(object):
                 return (-2) * math.pi * constants.G * sim_args["p"] * ((sim_args["distargs"]["r"] ** 2) - ((1/3) * ((pos_r)**2)))
             else:
                 return (-4/3) * math.pi * constants.G * sim_args["p"] * ((sim_args["distargs"]["r"] ** 3)/(pos_r))
+    
+    class NFW(object):
+        @staticmethod
+        def phi(sim_args,pos,**kwargs):
+
+            Rs = sim_args["distargs"]["r"]/kwargs["c"]
+
+            max_mass = 4*np.pi*(Rs**3)*((np.log(1+kwargs["c"]))-(kwargs["c"]/(1+kwargs["c"])))
+            actual_mass = sim_args["particle_mass"] * sim_args["distargs"]["n"]
+            p0 = actual_mass/max_mass
+
+            pos_r = spatial.distance.cdist(np.array([[0,0,0]]),np.reshape(pos,(1,)+pos.shape)).flatten()[0]
+            
+            if pos_r == 0:
+                return -4*np.pi*p0*(Rs**2) * constants.G
+            return ((-4*np.pi*p0*(Rs**3))/pos_r) * np.log(1+(pos_r/Rs)) * constants.G
+
 
 def args(r,n,p):
     vol = (4/3) * math.pi * (r ** 3)
@@ -24,12 +41,13 @@ def args(r,n,p):
     return {"distargs":{"r":r,"n":n},"p":p,"vol":vol,"particle_mass":particle_mass,"average_separation":average_separation}
 
 class Distribution:
-    def __init__(self,particle_generator,analytic):
+    def __init__(self,particle_generator,analytic,**kwargs):
         self.particle_generator = particle_generator
         self.analytic = analytic
+        self.kwargs = kwargs
 
     def __call__(self,r,n):
-        return self.particle_generator(r,n)
+        return self.particle_generator(r,n,**self.kwargs)
 
 class ParticleGenerator(object):
     @staticmethod
@@ -37,6 +55,32 @@ class ParticleGenerator(object):
         phi = np.random.uniform(low=0,high=2*math.pi,size=n)
         theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         particle_r = r * ((np.random.uniform(low=0,high=1,size=n))**(1/3))
+        x = particle_r * np.sin(theta) * np.cos(phi)
+        y = particle_r * np.sin(theta) * np.sin(phi)
+        z = particle_r * np.cos(theta)
+        return np.column_stack([x,y,z])
+    
+    def NFW(r,n,c=10,nbins = 10000):
+        def massDist(Rmax,Rvir,c):
+            Rs = Rvir/c
+            max_mass = 4*np.pi*(Rs**3)*((np.log(1+c))-(c/(1+c)))
+            return (4*np.pi*(Rs**3)*((np.log((Rs+Rmax)/Rs))+(Rs/(Rs+Rmax))-1))/max_mass
+        def sampleRadius(Rvir,c,nBins,nParticles):
+            radiuses = np.linspace(0,Rvir,nBins)
+            low = massDist(radiuses[:-1],Rvir,c)
+            high = massDist(radiuses[1:],Rvir,c)
+            dists = high-low
+            mul = (1/np.min(dists))
+            nRadiuses = np.round(dists * mul).astype(int)
+            delta = radiuses[1]
+            rSamples = []
+            for n,low in zip(nRadiuses,radiuses[:-1]):
+                rSamples += list(np.random.random(n)*delta+low)
+            rSamples = np.array(rSamples)
+            return np.random.choice(rSamples,size=nParticles,replace=False)
+        particle_r = sampleRadius(r,c,nbins,n)
+        phi = np.random.uniform(low=0,high=2*math.pi,size=n)
+        theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         x = particle_r * np.sin(theta) * np.cos(phi)
         y = particle_r * np.sin(theta) * np.sin(phi)
         z = particle_r * np.cos(theta)
@@ -62,12 +106,12 @@ class Ray:
     def rs(self,nsteps=25):
         return np.linspace(0,self.length,nsteps)
 
-    def analytic_phis(self,sim,nsteps=25):
+    def analytic_phis(self,sim,nsteps=25,**kwargs):
         rs = np.reshape(np.linspace(0,self.length,nsteps),(1,nsteps)).T
         points = rs * np.array([[1,0,0]])
         analytic = np.zeros(points.shape[0],dtype=float)
         for idx,pos in enumerate(points):
-            analytic[idx] = sim.analytic.phi(pos)
+            analytic[idx] = sim.analytic.phi(pos,**kwargs)
         return analytic
 
 def DefaultRay(length=None):
@@ -78,8 +122,8 @@ class __analytic__:
         self.sim_args = sim_args
         self.distribution = distribution
 
-    def phi(self,pos):
-        return self.distribution.analytic.phi(self.sim_args,pos)
+    def phi(self,pos,**kwargs):
+        return self.distribution.analytic.phi(self.sim_args,pos,**self.distribution.kwargs,**kwargs)
 
 class Simulation:
     def __init__(self,sim_args,distribution):
@@ -105,7 +149,7 @@ class Simulation:
         if eps == 0:
             potentials = (-1) * constants.G * (self.particle_mass)/dists
         else:
-            raise NotImplementedError("smoothing not implemented")
+            potentials = (-1) * constants.G * (self.particle_mass)/((dists**2+eps**2)**(1/2))
         return np.sum(potentials)
 
     def phis(self,positions,eps=0):
@@ -116,9 +160,9 @@ class Simulation:
             analytic[idx] = self.analytic.phi(pos)
         return distribution,analytic
 
-def plot_ray(sim,vector,length,nsteps=25,label=False):
+def plot_ray(sim,vector,length,nsteps=25,label=False,eps=0):
     my_ray = Ray(vector,length)
-    dist,ana = sim.phis(my_ray(nsteps))
+    dist,ana = sim.phis(my_ray(nsteps),eps=eps)
     rs = my_ray.rs(nsteps)
     if label:
         plt.scatter(rs,dist,label="Vector"+str(my_ray.vector[0])+"n"+str(sim.r),s=10,zorder=1)
