@@ -23,15 +23,15 @@ class Analytic(object):
 
             Rs = sim_args["distargs"]["r"]/kwargs["c"]
 
-            max_mass = 4*np.pi*(Rs**3)*((np.log(1+kwargs["c"]))-(kwargs["c"]/(1+kwargs["c"])))
-            actual_mass = sim_args["particle_mass"] * sim_args["distargs"]["n"]
+            #max_mass = 4*np.pi*(Rs**3)*((np.log(1+kwargs["c"]))-(kwargs["c"]/(1+kwargs["c"])))
+            max_mass = 4*np.pi*(Rs**3)*(np.log((Rs+sim_args["distargs"]["r"])/Rs)+(Rs/(Rs+sim_args["distargs"]["r"]))-1)
+            actual_mass = sim_args["p"] * sim_args["vol"]
             p0 = actual_mass/max_mass
-
             pos_r = spatial.distance.cdist(np.array([[0,0,0]]),np.reshape(pos,(1,)+pos.shape)).flatten()[0]
             
             if pos_r == 0:
                 return -4*np.pi*p0*(Rs**2) * constants.G
-            return ((-4*np.pi*p0*(Rs**3))/pos_r) * np.log(1+(pos_r/Rs)) * constants.G
+            return -1 * ((4*np.pi*p0*(Rs**3)*constants.G)/pos_r) * np.log(1+(pos_r/Rs))
 
 
 def args(r,n,p):
