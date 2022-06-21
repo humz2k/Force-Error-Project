@@ -1,30 +1,42 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import math
-
-class ParticleGenerator(object):
-    @staticmethod
-    def Uniform(r,n):
-        phi = np.random.uniform(low=0,high=2*math.pi,size=n)
-        theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
-        particle_r = r * ((np.random.uniform(low=0,high=1,size=n))**(1/3))
-        x = particle_r * np.sin(theta) * np.cos(phi)
-        y = particle_r * np.sin(theta) * np.sin(phi)
-        z = particle_r * np.cos(theta)
-        return np.column_stack([x,y,z])
+from scipy import spatial
+from scipy import constants
+import time
 
 class Node:
-    def __init__(self,particles,vol,pos):
+    def __init__(self,particles,masses,vol,pos):
         self.particles = particles
         self.n_particles = len(self.particles)
+        self.masses = masses
         self.vol = vol
         self.pos = pos
         self.children = []
         self.parent = None
 
+class DirectSum(object):
+    @staticmethod
+    def dists(pos,particles):
+        return spatial.distance.cdist(particles,np.reshape(pos,(1,)+pos.shape))
+
+    @staticmethod
+    def phi(pos,particles,masses,eps=0):
+        dists = DirectSum.dists(pos,particles).flatten()
+        masses = masses[dists != 0]
+        dists = dists[dists != 0]
+        if eps == 0:
+            potentials = (-1) * constants.G * (masses)/dists
+        else:
+            potentials = (-1) * constants.G * (masses)/((dists**2+eps**2)**(1/2))
+        return np.sum(potentials)
+
 class Tree:
-    def __init__(self,particles):
+    def __init__(self,particles,masses):
         self.particles = particles
+        self.masses = masses
+        self.base_node = None
+        self.truncations = 0
+        self.full = 0
+        self.dist_calculations = 0
     
     def get_box(self):
         max_x = np.max(self.particles[:,0])
@@ -79,35 +91,98 @@ class Tree:
     
     def build_tree(self):
         box = self.get_box()
-        return self.make_node(self.particles,box)
+        vol = abs(box[0][1] - box[0][0]) * abs(box[1][1] - box[1][0]) * abs(box[2][1] - box[2][0])
+        self.base_node,_,_ = self.make_node(self.particles,self.masses,box,vol)
+        return self.base_node
     
     def particle_in_box(self,particle,box):
         x = particle[0]
         y = particle[1]
         z = particle[2]
-        if not (x > box[0][0] and x <= box[0][1]):
+        if (x < box[0][0] or x > box[0][1]):
             return False
-        if not (y > box[1][0] and y <= box[1][1]):
+        if (y < box[1][0] or y > box[1][1]):
             return False
-        if not (z > box[2][0] and x <= box[2][1]):
+        if (z < box[2][0] or z > box[2][1]):
             return False
         return True
 
-    def make_node(self,particles,box):
+    def make_node(self,particles,particle_masses,box,vol):
         parts = []
-        for i in particles:
-            if self.particle_in_box(i,box):
-                parts.append(i)
-        vol = abs(box[0][1] - box[0][0]) * abs(box[1][1] - box[1][0]) * abs(box[2][1] - box[2][0])
+        masses = []
+        remaining_parts = []
+        remaining_masses = []
+        for pos,mass in zip(particles,particle_masses):
+            if self.particle_in_box(pos,box):
+                parts.append(pos)
+                masses.append(mass)
+            else:
+                remaining_parts.append(pos)
+                remaining_masses.append(mass)
+
         pos = np.array([box[0][1] - box[0][0],box[1][1] - box[1][0],box[2][1] - box[2][0]])
-        node = Node(parts,vol,pos)
+
+        parts = np.array(parts)
+        masses = np.array(masses)
+        node = Node(parts,masses,vol,pos)
+        remaining_masses = np.array(remaining_masses)
+        remaining_parts = np.array(remaining_parts)
         if len(parts) > 1:
             for subbox in self.divide_box(box):
-                next_node = self.make_node(parts,subbox)
+                next_node,parts,masses = self.make_node(parts,masses,subbox,vol/8)
                 node.children.append(next_node)
                 next_node.parent = node
-        return node
+        return node,remaining_parts,remaining_masses
 
-parts = ParticleGenerator.Uniform(100,100)
-myTree = Tree(parts)
-tree = myTree.build_tree()
+    def phis(self,evaluate_at,eps=0,theta=1):
+        out = np.zeros((len(evaluate_at)),dtype=float)
+        self.truncations = 0
+        self.full = 0
+        for idx,i in enumerate(evaluate_at):
+            out[idx] = self.evaluate_phi(self.base_node,i,theta,eps,0,0)
+        return out,{"truncations":self.truncations,"direct":self.full}
+    
+    def evaluate_phis(self,evaluate_at,eps=0,theta=1):
+        out = np.zeros(len(evaluate_at),dtype=float)
+        delta = np.zeros_like(out)
+        stack = [self.base_node]
+        indexes = np.arange(len(evaluate_at))
+        positions = [indexes]
+        truncations = 0
+        direct = 0
+        while len(stack) != 0:
+            node = stack.pop()
+            pos_indexes = positions.pop()
+            pos = np.take(evaluate_at,pos_indexes,axis=0)
+            if node.n_particles == 1:
+                direct += len(pos)
+                dists = spatial.distance.cdist(pos,node.particles).flatten()
+                to_change = pos_indexes[dists != 0]
+                dists = dists[dists != 0]
+                if eps == 0:
+                    delta_phi = (-1) * constants.G * (node.masses[0])/dists
+                else:
+                    delta_phi = (-1) * constants.G * (node.masses[0])/((dists**2+eps**2)**(1/2))
+                out[to_change] += delta_phi
+            else:
+                dists = spatial.distance.cdist(pos,np.reshape(node.pos,(1,)+node.pos.shape))
+                check = ((node.vol/dists) <= theta).flatten()
+                nexts = pos_indexes[np.logical_not(check)]
+                finished = pos_indexes[check]
+                if len(finished) != 0:
+                    truncations += len(finished)
+                    mass = np.sum(node.masses)
+                    dists = dists[check].flatten()
+                    to_change = finished[dists != 0]
+                    dists = dists[dists != 0]
+                    if eps == 0:
+                        delta_phi = (-1) * constants.G * (mass)/dists
+                    else:
+                        delta_phi = (-1) * constants.G * (mass)/((dists**2+eps**2)**(1/2))
+                    out[to_change] += delta_phi
+                if len(nexts) > 0:
+                    for child in node.children:
+                        if child.n_particles > 0:
+                            stack.append(child)
+                            positions.append(nexts)
+        return out,{"truncations":truncations,"direct":direct}
