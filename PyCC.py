@@ -5,7 +5,7 @@ from scipy import constants
 import time
 import treecode
 
-def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",steps=1,delta=0,save=True,**kwargs):
+def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",steps=1,delta=0,save=True,recursive=False,**kwargs):
     if type(df) == type(None):
         a = pd.read_csv(file)
     else:
@@ -23,7 +23,7 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
     if algo == "treecode":
         tree_build_time_1 = time.perf_counter()
         tree = treecode.Tree(particles,masses)
-        tree.build_tree()
+        tree.build_tree(recursive=recursive)
         tree_build_time_2 = time.perf_counter()
         phis,stats = tree.evaluate_phis(evaluate_at,**kwargs)
         stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
@@ -79,6 +79,41 @@ class Distributions(object):
         if file != None:
             df.to_csv(file,index=False)
         return df
+    
+    @staticmethod
+    def NFW(Rvir,c,p0,n,atol=1e-3,file=None):
+        Rs = Rvir/c
+        def mass(r,Rs=Rs,p0=p0):
+            return 4 * np.pi * p0 * (Rs**3) * (np.log((Rs+r)/Rs) + (Rs/(Rs + r)) - 1)
+        def cdf(r):
+            return (np.log((Rs+r)/Rs) + (Rs/(Rs + r)) - 1)/(np.log((Rs+Rvir)/Rs) + (Rs/(Rs + Rvir)) - 1)
+        def inverse_cdf(p,atol=atol):
+            current = Rvir
+            while True:
+                prob = cdf(current)
+                diff = prob - p
+                if abs(diff) <= atol:
+                    return current
+                elif diff < 0:
+                    current = (current)/2 + current
+                elif diff > 0:
+                    current = (current)/2
+        radiuses = np.zeros((n))
+        input_p = np.random.uniform(0,1,n)
+        for i in range(n):
+            radiuses[i] = inverse_cdf(input_p[i])
+        phi = np.random.uniform(low=0,high=2*np.pi,size=n)
+        theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
+        x = radiuses * np.sin(theta) * np.cos(phi)
+        y = radiuses * np.sin(theta) * np.sin(phi)
+        z = radiuses * np.cos(theta)
+        particle_mass = mass(Rvir,Rs,p0)/n
+        masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
+        particles = pd.DataFrame(np.column_stack([x,y,z]),columns=["x","y","z"])
+        df = pd.concat((particles,masses),axis=1)
+        if file != None:
+            df.to_csv(file,index=False)
+        return df
         
 class Analytic(object):
     @staticmethod
@@ -96,6 +131,18 @@ class Analytic(object):
         out = np.zeros((len(positions)),dtype=float)
         for idx,pos in enumerate(positions):
             out[idx] = phi(r,p,pos)
+        return out
+    
+    @staticmethod
+    def NFW(Rvir,c,p0,positions):
+        positions = positions.loc[:,["x","y","z"]].to_numpy()
+        Rs = Rvir/c
+        def phi(Rs,p0,pos):
+            pos_r = spatial.distance.cdist(np.array([[0,0,0]]),np.reshape(pos,(1,)+pos.shape)).flatten()[0]
+            return (-1) * ((4 * np.pi * constants.G * p0 * (Rs**3))/pos_r) * np.log(1+(pos_r/Rs))
+        out = np.zeros((len(positions)),dtype=float)
+        for idx,pos in enumerate(positions):
+            out[idx] = phi(Rs,p0,pos)
         return out
 
 def angles2vectors(alphas,betas):

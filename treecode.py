@@ -1,17 +1,20 @@
 import numpy as np
 from scipy import spatial
 from scipy import constants
+import warnings
 import time
 
+warnings.filterwarnings('ignore')
+
 class Node:
-    def __init__(self,particles,masses,vol,pos):
+    def __init__(self,particles=None,masses=None,vol=None,pos=None,box=None):
         self.particles = particles
-        self.n_particles = len(self.particles)
+        self.n_particles = 0
         self.masses = masses
         self.vol = vol
         self.pos = pos
+        self.box = box
         self.children = []
-        self.parent = None
 
 class DirectSum(object):
     @staticmethod
@@ -89,11 +92,14 @@ class Tree:
             boxes.append(np.array(i))
         return boxes
     
-    def build_tree(self):
-        box = self.get_box()
-        vol = abs(box[0][1] - box[0][0]) * abs(box[1][1] - box[1][0]) * abs(box[2][1] - box[2][0])
-        self.base_node,_,_ = self.make_node(self.particles,self.masses,box,vol)
-        return self.base_node
+    def build_tree(self,recursive = False):
+        if recursive:
+            box = self.get_box()
+            vol = abs(box[0][1] - box[0][0]) * abs(box[1][1] - box[1][0]) * abs(box[2][1] - box[2][0])
+            self.base_node,_,_ = self.make_node_recursive(self.particles,self.masses,box,vol)
+            return self.base_node
+        return self.make_nodes()
+
     
     def particle_in_box(self,particle,box):
         x = particle[0]
@@ -106,73 +112,168 @@ class Tree:
         if (z < box[2][0] or z > box[2][1]):
             return False
         return True
+    
+    def make_nodes(self):
+        box = self.get_box()
+        diff = box[:,1] - box[:,0]
+        abs_diff = np.abs(diff)
+        vol = abs_diff[0] * abs_diff[1] * abs_diff[2]
+        pos = pos = (diff)/2 + box[:,0]
+        self.base_node = Node(particles=self.particles,masses=self.masses,vol=vol,pos=pos)
 
-    def make_node(self,particles,particle_masses,box,vol):
+        stack = []
         parts = []
         masses = []
-        remaining_parts = []
-        remaining_masses = []
-        for pos,mass in zip(particles,particle_masses):
-            if self.particle_in_box(pos,box):
-                parts.append(pos)
-                masses.append(mass)
-            else:
-                remaining_parts.append(pos)
-                remaining_masses.append(mass)
 
-        pos = np.array([box[0][1] - box[0][0],box[1][1] - box[1][0],box[2][1] - box[2][0]])
+        new_parts = self.particles.tolist()
+        new_masses = self.masses.tolist()
+        for i in self.divide_box(box):
+            temp = Node(particles=new_parts,masses = new_masses,box=i)
+            self.base_node.children.append(temp)
+            stack.append(temp)
+            parts.append(new_parts)
+            masses.append(new_masses)
 
-        parts = np.array(parts)
-        masses = np.array(masses)
+        while len(stack) != 0:
+            current_node = stack.pop()
+            current_parts = parts.pop()
+            current_masses = masses.pop()
+            new_parts = []
+            new_masses = []
+            to_remove = []
+            box = current_node.box
+            for idx,i in enumerate(current_parts):
+                if self.particle_in_box(i,box):
+                    new_parts.append(i)
+                    new_masses.append(current_masses[idx])
+                    to_remove.append(idx)
+            
+            current_node.particles = np.array(new_parts)
+            current_node.masses = np.array(new_masses)
+            current_node.n_particles = len(current_node.particles)
+
+            diff = box[:,1] - box[:,0]
+            abs_diff = np.abs(diff)
+            vol = abs_diff[0] * abs_diff[1] * abs_diff[2]
+            pos = pos = (diff)/2 + box[:,0]
+
+            current_node.vol = vol
+            current_node.pos = pos
+
+            if current_node.n_particles > 1:
+                new_parts = current_node.particles.tolist()
+                new_masses = current_node.masses.tolist()
+                for i in self.divide_box(box):
+                    temp = Node(particles=new_parts,masses = new_masses,box=i)
+                    current_node.children.append(temp)
+                    stack.append(temp)
+                    parts.append(new_parts)
+                    masses.append(new_masses)
+
+            for i in to_remove[::-1]:
+                current_parts.pop(i)
+                current_masses.pop(i)
+        return self.base_node
+
+    def make_node_recursive(self,particles,particle_masses,box,vol):
+        indexes = np.arange(len(particles))
+
+        inside = indexes[np.take(particles,indexes,axis=0)[:,0] >= box[0][0]]
+
+        if len(inside) == 0:
+            return Node([],None,None,None),particles,particle_masses
+
+        inside = inside[np.take(particles,inside,axis=0)[:,0] <= box[0][1]]
+
+        if len(inside) == 0:
+            return Node([],None,None,None),particles,particle_masses
+
+        inside = inside[np.take(particles,inside,axis=0)[:,1] >= box[1][0]]
+
+        if len(inside) == 0:
+            return Node([],None,None,None),particles,particle_masses
+
+        inside = inside[np.take(particles,inside,axis=0)[:,1] <= box[1][1]]
+
+        if len(inside) == 0:
+            return Node([],None,None,None),particles,particle_masses
+
+        inside = inside[np.take(particles,inside,axis=0)[:,2] >= box[2][0]]
+
+        if len(inside) == 0:
+            return Node([],None,None,None),particles,particle_masses
+
+        inside = inside[np.take(particles,inside,axis=0)[:,2] <= box[2][1]]
+
+        if len(inside) == 0:
+            return Node([],None,None,None),particles,particle_masses
+
+        parts = np.take(particles,inside,axis=0)
+        masses = np.take(particle_masses,inside,axis=0)
+
+        if len(parts) == len(particles):
+            remaining_parts = []
+            remaining_masses = []
+        else:
+            outside = indexes[np.logical_not(np.isin(indexes,inside))]
+            remaining_parts = np.take(particles,outside,axis=0)
+            remaining_masses = np.take(particle_masses,outside,axis=0)
+ 
+        pos = (box[:,1] - box[:,0])/2 + box[:,0]
+
         node = Node(parts,masses,vol,pos)
-        remaining_masses = np.array(remaining_masses)
-        remaining_parts = np.array(remaining_parts)
         if len(parts) > 1:
             for subbox in self.divide_box(box):
-                next_node,parts,masses = self.make_node(parts,masses,subbox,vol/8)
+                next_node,parts,masses = self.make_node_recursive(parts,masses,subbox,vol/8)
                 node.children.append(next_node)
                 next_node.parent = node
+                if len(parts) == 0:
+                    break
+        
         return node,remaining_parts,remaining_masses
 
-    def phis(self,evaluate_at,eps=0,theta=1):
-        out = np.zeros((len(evaluate_at)),dtype=float)
-        self.truncations = 0
-        self.full = 0
-        for idx,i in enumerate(evaluate_at):
-            out[idx] = self.evaluate_phi(self.base_node,i,theta,eps,0,0)
-        return out,{"truncations":self.truncations,"direct":self.full}
-    
     def evaluate_phis(self,evaluate_at,eps=0,theta=1):
+        #the output array for phis
         out = np.zeros(len(evaluate_at),dtype=float)
-        delta = np.zeros_like(out)
-        stack = [self.base_node]
+
+        #indexes of the phis
         indexes = np.arange(len(evaluate_at))
+
+        stack = [self.base_node]
         positions = [indexes]
+
         truncations = 0
         direct = 0
+
         while len(stack) != 0:
+
             node = stack.pop()
             pos_indexes = positions.pop()
+
             pos = np.take(evaluate_at,pos_indexes,axis=0)
+
             if node.n_particles == 1:
                 direct += len(pos)
                 dists = spatial.distance.cdist(pos,node.particles).flatten()
+
                 to_change = pos_indexes[dists != 0]
                 dists = dists[dists != 0]
+
                 if eps == 0:
                     delta_phi = (-1) * constants.G * (node.masses[0])/dists
                 else:
                     delta_phi = (-1) * constants.G * (node.masses[0])/((dists**2+eps**2)**(1/2))
+                
                 out[to_change] += delta_phi
             else:
-                dists = spatial.distance.cdist(pos,np.reshape(node.pos,(1,)+node.pos.shape))
-                check = ((node.vol/dists) <= theta).flatten()
+                dists = spatial.distance.cdist(pos,np.reshape(node.pos,(1,)+node.pos.shape)).flatten()
+                check = ((node.vol/dists) <= theta)
                 nexts = pos_indexes[np.logical_not(check)]
                 finished = pos_indexes[check]
                 if len(finished) != 0:
                     truncations += len(finished)
                     mass = np.sum(node.masses)
-                    dists = dists[check].flatten()
+                    dists = dists[check]
                     to_change = finished[dists != 0]
                     dists = dists[dists != 0]
                     if eps == 0:
@@ -185,4 +286,4 @@ class Tree:
                         if child.n_particles > 0:
                             stack.append(child)
                             positions.append(nexts)
-        return out,{"truncations":truncations,"direct":direct}
+        return out,{"truncations":truncations,"directs":direct}
