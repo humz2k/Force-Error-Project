@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy import spatial
 from scipy import constants
+from scipy.special import lambertw
 import time
 import treecode
 
@@ -81,23 +82,17 @@ class Distributions(object):
         return df
     
     @staticmethod
-    def NFW(Rvir,c,p0,n,atol=1e-3,file=None):
+    def NFW(Rvir,c,p0,n,file=None):
         Rs = Rvir/c
         def mass(r,Rs=Rs,p0=p0):
             return 4 * np.pi * p0 * (Rs**3) * (np.log((Rs+r)/Rs) + (Rs/(Rs + r)) - 1)
         def cdf(r):
             return (np.log((Rs+r)/Rs) + (Rs/(Rs + r)) - 1)/(np.log((Rs+Rvir)/Rs) + (Rs/(Rs + Rvir)) - 1)
-        def inverse_cdf(p,atol=atol):
-            current = Rvir
-            while True:
-                prob = cdf(current)
-                diff = prob - p
-                if abs(diff) <= atol:
-                    return current
-                elif diff < 0:
-                    current = (current)/2 + current
-                elif diff > 0:
-                    current = (current)/2
+        maxMass = mass(Rvir,Rs,p0)
+        def inverse_cdf(p):
+            y = p*(np.log((Rs+Rvir)/Rs) + (Rs/(Rs + Rvir)) - 1)
+            W = lambertw((-1)/(np.exp(y+1)))
+            return float((-Rs/(W)) - Rs)
         radiuses = np.zeros((n))
         input_p = np.random.uniform(0,1,n)
         for i in range(n):
@@ -107,7 +102,7 @@ class Distributions(object):
         x = radiuses * np.sin(theta) * np.cos(phi)
         y = radiuses * np.sin(theta) * np.sin(phi)
         z = radiuses * np.cos(theta)
-        particle_mass = mass(Rvir,Rs,p0)/n
+        particle_mass = maxMass/n
         masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
         particles = pd.DataFrame(np.column_stack([x,y,z]),columns=["x","y","z"])
         df = pd.concat((particles,masses),axis=1)
@@ -139,7 +134,7 @@ class Analytic(object):
         Rs = Rvir/c
         def phi(Rs,p0,pos):
             pos_r = spatial.distance.cdist(np.array([[0,0,0]]),np.reshape(pos,(1,)+pos.shape)).flatten()[0]
-            return (-1) * ((4 * np.pi * constants.G * p0 * (Rs**3))/pos_r) * np.log(1+(pos_r/Rs))
+            return ((-4 * np.pi * constants.G * p0 * (Rs**3))/pos_r) * np.log(1+(pos_r/Rs))
         out = np.zeros((len(positions)),dtype=float)
         for idx,pos in enumerate(positions):
             out[idx] = phi(Rs,p0,pos)
