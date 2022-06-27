@@ -6,34 +6,86 @@ from scipy.special import lambertw
 import time
 import treecode
 
-def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",steps=1,delta=0,save=True,recursive=False,**kwargs):
+schemes = {}
+schemes["euler"] = "adk"
+schemes["kick-drift"] = "akd"
+schemes["drift-kick"] = "dak"
+schemes["leapfrog"] = "dakd"
+
+def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,delta=0,save=True,recursive=False,**kwargs):
     if type(df) == type(None):
         a = pd.read_csv(file)
     else:
         a = df
     particles = a.loc[:,["x","y","z"]].to_numpy(dtype=float)
     masses = a.loc[:,"mass"].to_numpy(dtype=float)
+    velocities = a.loc[:,["vx","vy","vz"]].to_numpy(dtype=float)
     if type(evaluate_at) == type(None):
         evaluate_at = particles
     else:
         evaluate_at = evaluate_at.loc[:,["x","y","z"]].to_numpy(dtype=float)
     first = time.perf_counter()
     stats = {}
-    if algo == "directsum":
-        phis = DirectSum.phis(evaluate_at,particles,masses,**kwargs)
-    if algo == "treecode":
-        tree_build_time_1 = time.perf_counter()
-        tree = treecode.Tree(particles,masses)
-        tree.build_tree(recursive=recursive)
-        tree_build_time_2 = time.perf_counter()
-        phis,stats = tree.evaluate_phis(evaluate_at,**kwargs)
-        stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
+    if eval_type == "phi":
+        ids = np.reshape(np.arange(len(evaluate_at)),(1,len(evaluate_at))).T
+        if algo == "directsum":
+            phis = DirectSum.phis(evaluate_at,particles,masses,**kwargs)
+        if algo == "treecode":
+            tree_build_time_1 = time.perf_counter()
+            tree = treecode.Tree(particles,masses)
+            tree.build_tree(recursive=recursive)
+            tree_build_time_2 = time.perf_counter()
+            phis,stats = tree.evaluate_phis(evaluate_at,**kwargs)
+            stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
+        positions = evaluate_at
+        vels = velocities
+    else:
+        ids = np.reshape(np.arange(len(particles)),(1,len(particles))).T
+        scheme = scheme.lower()
+        drift_t = 1/scheme.count("d")
+        kick_t = 1/scheme.count("k")
+        positions = np.zeros((steps+1,)+particles.shape,dtype=float)
+        vels = np.zeros((steps+1,)+particles.shape,dtype=float)
+        phis = np.zeros((steps+1,len(particles)),dtype=float)
+        vels[0] = velocities
+        positions[0] = particles
+        for step in range(steps):
+            for action in scheme:
+                if action == "a":
+                    if algo == "directsum":
+                        acc,temp_phi = DirectSum.acc_func(particles,particles,masses,**kwargs)
+                    elif algo == "treecode":
+                        tree_build_time_1 = time.perf_counter()
+                        tree = treecode.Tree(particles,masses)
+                        tree.build_tree(recursive=recursive)
+                        tree_build_time_2 = time.perf_counter()
+                        phis,stats = tree.evaluate_phis(particles,**kwargs)
+                        stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
+                if action == "k":
+                    velocities = velocities + acc*dt*kick_t
+                if action == "d":
+                    particles = particles + velocities*dt*drift_t
+            phis[step] = temp_phi
+            positions[step+1] = particles
+            vels[step+1] = velocities
+        if algo == "directsum":
+            phis[-1] = DirectSum.phis(particles,particles,masses,**kwargs)
+        ids = np.array([ids for i in range(steps+1)])
+        ids = np.reshape(ids,(ids.shape[0]*ids.shape[1],ids.shape[2]))
+        positions = np.reshape(positions,(positions.shape[0]*positions.shape[1],positions.shape[2]))
+        vels = np.reshape(vels,(vels.shape[0]*vels.shape[1],vels.shape[2]))
+        phis = np.reshape(phis,(phis.shape[0]*phis.shape[1]))
     second = time.perf_counter()
     eval_time = second-first
     stats.update({"eval_time":eval_time})
     phis = pd.DataFrame(np.reshape(phis,(1,)+phis.shape).T,columns=["phi"])
-    positions = pd.DataFrame(evaluate_at,columns=["x","y","z"])
-    out = pd.concat((positions,phis),axis=1)
+    positions = pd.DataFrame(positions,columns=["x","y","z"])
+    ids = pd.DataFrame(ids,columns=["id"],dtype=int)
+    if eval_type == "phi":
+        out = pd.concat((ids,positions,phis),axis=1)
+    else:
+        vels = pd.DataFrame(vels,columns=["vx","vy","vz"])
+        out = pd.concat((ids,positions,vels,phis),axis=1)
     if save:
         if file == None:
             outfile = file.split(".")[0]+"_out"+".csv"
@@ -44,7 +96,7 @@ class DirectSum(object):
     @staticmethod
     def dists(pos,particles):
         return spatial.distance.cdist(particles,np.reshape(pos,(1,)+pos.shape))
-
+    
     @staticmethod
     def phi(pos,particles,masses,eps=0):
         dists = DirectSum.dists(pos,particles).flatten()
@@ -58,10 +110,36 @@ class DirectSum(object):
     
     @staticmethod
     def phis(positions,particles,masses,eps=0):
-        distribution = np.zeros(positions.shape[0],dtype=float)
+        phi = np.zeros(positions.shape[0],dtype=float)
         for idx,pos in enumerate(positions):
-            distribution[idx] = DirectSum.phi(pos,particles,masses,eps)
-        return distribution
+            phi[idx] = DirectSum.phi(pos,particles,masses,eps)
+        return phi
+
+    @staticmethod
+    def acc_and_phi(pos,particles,masses,eps=0):
+        dists = DirectSum.dists(pos,particles).flatten()
+        masses = masses[dists != 0]
+        parts = particles[dists != 0]
+        dists = dists[dists != 0]
+        if eps == 0:
+            potentials = (-1) * constants.G * (masses)/dists
+            muls = (constants.G * ((masses) / (dists**3)))
+            accelerations = (parts - pos) * np.reshape(muls,(1,) + muls.shape).T
+        else:
+            potentials = (-1) * constants.G * (masses)/((dists**2+eps**2)**(1/2))
+            muls = (constants.G * masses / (((dists**2+eps**2)**(1/2))**3))
+            accelerations = (parts - pos) * np.reshape(muls,(1,) + muls.shape).T
+        return np.sum(accelerations,axis=0),np.sum(potentials)
+    
+    @staticmethod
+    def acc_func(positions,particles,masses,eps=0):
+        acc = np.zeros((positions.shape[0],3),dtype=float)
+        phi = np.zeros(positions.shape[0],dtype=float)
+        for idx,pos in enumerate(positions):
+            temp_acc,temp_phi = DirectSum.acc_and_phi(pos,particles,masses,eps)
+            phi[idx] = temp_phi
+            acc[idx] = temp_acc
+        return acc,phi
 
 class Distributions(object):
     @staticmethod
@@ -74,9 +152,12 @@ class Distributions(object):
         z = particle_r * np.cos(theta)
         vol = (4/3) * np.pi * (r ** 3)
         particle_mass = (p * vol)/n
+        particles = np.column_stack([x,y,z])
+        velocities = np.zeros_like(particles,dtype=float)
         masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
-        particles = pd.DataFrame(np.column_stack([x,y,z]),columns=["x","y","z"])
-        df = pd.concat((particles,masses),axis=1)
+        particles = pd.DataFrame(particles,columns=["x","y","z"])
+        velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])
+        df = pd.concat((particles,velocities,masses),axis=1)
         if file != None:
             df.to_csv(file,index=False)
         return df
@@ -103,9 +184,12 @@ class Distributions(object):
         y = radiuses * np.sin(theta) * np.sin(phi)
         z = radiuses * np.cos(theta)
         particle_mass = maxMass/n
+        particles = np.column_stack([x,y,z])
+        velocities = np.zeros_like(particles,dtype=float)
         masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
-        particles = pd.DataFrame(np.column_stack([x,y,z]),columns=["x","y","z"])
-        df = pd.concat((particles,masses),axis=1)
+        particles = pd.DataFrame(particles,columns=["x","y","z"])
+        velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])
+        df = pd.concat((particles,velocities,masses),axis=1)
         if file != None:
             df.to_csv(file,index=False)
         return df
