@@ -232,9 +232,10 @@ class Tree:
         
         return node,remaining_parts,remaining_masses
 
-    def evaluate_phis(self,evaluate_at,eps=0,theta=1):
+    def evaluate(self,evaluate_at,eps=0,theta=1):
         #the output array for phis
         out = np.zeros(len(evaluate_at),dtype=float)
+        acc = np.zeros((len(evaluate_at),3),dtype=float)
 
         #indexes of the phis
         indexes = np.arange(len(evaluate_at))
@@ -257,14 +258,19 @@ class Tree:
                 dists = spatial.distance.cdist(pos,node.particles).flatten()
 
                 to_change = pos_indexes[dists != 0]
+                parts = np.take(evaluate_at,to_change,axis=0)
                 dists = dists[dists != 0]
-
-                if eps == 0:
-                    delta_phi = (-1) * constants.G * (node.masses[0])/dists
-                else:
-                    delta_phi = (-1) * constants.G * (node.masses[0])/((dists**2+eps**2)**(1/2))
-                
-                out[to_change] += delta_phi
+                if len(dists) > 0:
+                    if eps == 0:
+                        delta_phi = (-1) * constants.G * (node.masses[0])/dists
+                        muls = (constants.G * ((node.masses[0]) / (dists**3)))
+                        accelerations = (node.particles - parts) * np.reshape(muls,(1,) + muls.shape).T
+                    else:
+                        delta_phi = (-1) * constants.G * (node.masses[0])/((dists**2+eps**2)**(1/2))
+                        muls = (constants.G * node.masses[0] / (((dists**2+eps**2)**(1/2))**3))
+                        accelerations = (node.particles - parts) * np.reshape(muls,(1,) + muls.shape).T
+                    out[to_change] += delta_phi
+                    acc[to_change] += accelerations
             else:
                 dists = spatial.distance.cdist(pos,np.reshape(node.pos,(1,)+node.pos.shape)).flatten()
                 check = ((node.vol/dists) <= theta)
@@ -278,12 +284,17 @@ class Tree:
                     dists = dists[dists != 0]
                     if eps == 0:
                         delta_phi = (-1) * constants.G * (mass)/dists
+                        muls = (constants.G * ((mass) / (dists**3)))
+                        accelerations = (-(pos - node.pos)) * np.reshape(muls,(1,) + muls.shape).T
                     else:
                         delta_phi = (-1) * constants.G * (mass)/((dists**2+eps**2)**(1/2))
+                        muls = (constants.G * mass / (((dists**2+eps**2)**(1/2))**3))
+                        accelerations = (-(pos - node.pos)) * np.reshape(muls,(1,) + muls.shape).T
                     out[to_change] += delta_phi
+                    acc[to_change] += accelerations
                 if len(nexts) > 0:
                     for child in node.children:
                         if child.n_particles > 0:
                             stack.append(child)
                             positions.append(nexts)
-        return out,{"truncations":truncations,"directs":direct}
+        return acc,out,{"truncations":truncations,"directs":direct}

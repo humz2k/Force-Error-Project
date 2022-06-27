@@ -12,7 +12,7 @@ schemes["kick-drift"] = "akd"
 schemes["drift-kick"] = "dak"
 schemes["leapfrog"] = "dakd"
 
-def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,delta=0,save=True,recursive=False,**kwargs):
+def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,recursive=False,**kwargs):
     if type(df) == type(None):
         a = pd.read_csv(file)
     else:
@@ -29,13 +29,13 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
     if eval_type == "phi":
         ids = np.reshape(np.arange(len(evaluate_at)),(1,len(evaluate_at))).T
         if algo == "directsum":
-            phis = DirectSum.phis(evaluate_at,particles,masses,**kwargs)
+            acc,phis = DirectSum.acc_func(evaluate_at,particles,masses,**kwargs)
         if algo == "treecode":
             tree_build_time_1 = time.perf_counter()
             tree = treecode.Tree(particles,masses)
             tree.build_tree(recursive=recursive)
             tree_build_time_2 = time.perf_counter()
-            phis,stats = tree.evaluate_phis(evaluate_at,**kwargs)
+            acc,phis,stats = tree.evaluate(evaluate_at,**kwargs)
             stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
         positions = evaluate_at
         vels = velocities
@@ -46,6 +46,7 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
         kick_t = 1/scheme.count("k")
         positions = np.zeros((steps+1,)+particles.shape,dtype=float)
         vels = np.zeros((steps+1,)+particles.shape,dtype=float)
+        accs = np.zeros((steps+1,)+particles.shape,dtype=float)
         phis = np.zeros((steps+1,len(particles)),dtype=float)
         vels[0] = velocities
         positions[0] = particles
@@ -59,21 +60,25 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
                         tree = treecode.Tree(particles,masses)
                         tree.build_tree(recursive=recursive)
                         tree_build_time_2 = time.perf_counter()
-                        phis,stats = tree.evaluate_phis(particles,**kwargs)
+                        acc,temp_phi,stats = tree.evaluate(particles,**kwargs)
                         stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
                 if action == "k":
                     velocities = velocities + acc*dt*kick_t
                 if action == "d":
                     particles = particles + velocities*dt*drift_t
             phis[step] = temp_phi
+            accs[step] = acc
             positions[step+1] = particles
             vels[step+1] = velocities
         if algo == "directsum":
-            phis[-1] = DirectSum.phis(particles,particles,masses,**kwargs)
+            acc,temp_phi = DirectSum.acc_func(particles,particles,masses,**kwargs)
+            phis[-1] = temp_phi
+            accs[-1] = acc
         ids = np.array([ids for i in range(steps+1)])
         ids = np.reshape(ids,(ids.shape[0]*ids.shape[1],ids.shape[2]))
         positions = np.reshape(positions,(positions.shape[0]*positions.shape[1],positions.shape[2]))
         vels = np.reshape(vels,(vels.shape[0]*vels.shape[1],vels.shape[2]))
+        accs = np.reshape(accs,(accs.shape[0]*accs.shape[1],accs.shape[2]))
         phis = np.reshape(phis,(phis.shape[0]*phis.shape[1]))
     second = time.perf_counter()
     eval_time = second-first
@@ -84,8 +89,9 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
     if eval_type == "phi":
         out = pd.concat((ids,positions,phis),axis=1)
     else:
+        accs = pd.DataFrame(accs,columns=["ax","ay","az"])
         vels = pd.DataFrame(vels,columns=["vx","vy","vz"])
-        out = pd.concat((ids,positions,vels,phis),axis=1)
+        out = pd.concat((ids,positions,accs,vels,phis),axis=1)
     if save:
         if file == None:
             outfile = file.split(".")[0]+"_out"+".csv"
@@ -96,24 +102,6 @@ class DirectSum(object):
     @staticmethod
     def dists(pos,particles):
         return spatial.distance.cdist(particles,np.reshape(pos,(1,)+pos.shape))
-    
-    @staticmethod
-    def phi(pos,particles,masses,eps=0):
-        dists = DirectSum.dists(pos,particles).flatten()
-        masses = masses[dists != 0]
-        dists = dists[dists != 0]
-        if eps == 0:
-            potentials = (-1) * constants.G * (masses)/dists
-        else:
-            potentials = (-1) * constants.G * (masses)/((dists**2+eps**2)**(1/2))
-        return np.sum(potentials)
-    
-    @staticmethod
-    def phis(positions,particles,masses,eps=0):
-        phi = np.zeros(positions.shape[0],dtype=float)
-        for idx,pos in enumerate(positions):
-            phi[idx] = DirectSum.phi(pos,particles,masses,eps)
-        return phi
 
     @staticmethod
     def acc_and_phi(pos,particles,masses,eps=0):
@@ -248,4 +236,3 @@ def ray(vector,length,nsteps,file=None):
 def points2radius(points):
     points = points.loc[:,["x","y","z"]].to_numpy()
     return spatial.distance.cdist(np.array([[0,0,0]]),points).flatten()
-    
