@@ -6,7 +6,7 @@ from scipy import spatial
 from astropy import constants
 import treecode
 
-df = PyCC.Distributions.Uniform(r = 100, p = 100, n = 5000)
+df = PyCC.Distributions.Uniform(r = 1000, p = 100, n = 1000)
 
 points = df.loc[:,["x","y","z"]].to_numpy()
 masses = df.loc[:,"mass"].to_numpy()
@@ -26,11 +26,12 @@ class Tree:
         self.particles,self.masses = particles,masses
         self.pcd = o3d.geometry.PointCloud()
         self.pcd.points = o3d.utility.Vector3dVector(self.particles)
-    
+
     def build_tree(self):
         first = time.perf_counter()
-        self.tree = o3d.geometry.Octree(max_depth = 100)
-        self.tree.convert_from_point_cloud(self.pcd)
+        self.tree = o3d.geometry.Octree(max_depth = 50)
+        self.tree.convert_from_point_cloud(self.pcd, size_expand=0.01)
+        
         second = time.perf_counter()
         return second-first
     
@@ -67,14 +68,107 @@ class Tree:
     
     def evaluate(self,evaluate_at,eps=0,theta=1):
         first = time.perf_counter()
-        accs = np.zeros_like(evaluate_at,dtype=float)
-        phis = np.zeros((len(evaluate_at)),dtype=float)
-        for idx,pos in enumerate(evaluate_at):
-            acc,phi = self.evaluate_one(pos,eps,theta)
-            accs[idx] = acc
-            phis[idx] = phi
+        indexes = np.arange(len(evaluate_at))
+        self.phi = np.zeros_like(indexes,dtype=float)
+        self.acc = np.zeros_like(evaluate_at,dtype=float)
+        self.stack = [indexes]
+        self.evaluations = [0]
+        self.correct_evaluations = []
+        self.truncations = 0
+        def traverse(node,info):
+            #print(node.indices)
+            if len(self.stack) == 0:
+                return True
+            
+            n_children = str(node).split("with ")[1].split(" ")[0]
+            try:
+                n_children = int(n_children)
+                if n_children == 1:
+                    return False
+                if n_children == 0:
+                    n_children = 1
+            except:
+                n_children = 1
+            
+            self.correct_evaluations.append(n_children)
+
+            indexes = self.stack[-1]
+
+            particles = np.take(evaluate_at,indexes,axis=0)
+            if len(node.indices) == 1:
+                origin = self.particles[node.indices[0]]
+            else:
+                origin = info.origin+(info.size/2)
+            dists = spatial.distance.cdist(particles,np.reshape(origin,(1,3))).flatten()
+            good = dists != 0
+            if np.sum(np.logical_not(good)) != 0:
+                indexes = indexes[good]
+                particles = particles[good]
+                dists = dists[good]
+            done = False
+
+            if len(node.indices) == 1:
+                next = np.array([],dtype=int)
+                mass = self.masses[node.indices[0]]
+                if len(dists) > 0:
+                    if eps == 0:
+                        delta_phi = (-1) * constants.G * (mass)/dists
+                        muls = (constants.G * ((mass) / (dists**3)))
+                        accelerations = (-(particles - origin)) * np.reshape(muls,(1,) + muls.shape).T
+                    else:
+                        delta_phi = (-1) * constants.G * (mass)/((dists**2+eps**2)**(1/2))
+                        muls = (constants.G * mass / (((dists**2+eps**2)**(1/2))**3))
+                        accelerations = (-(particles - origin)) * np.reshape(muls,(1,) + muls.shape).T
+                    self.phi[indexes] += np.array(delta_phi)
+                    self.acc[indexes] += np.array(accelerations)
+                done = True
+            else:
+                check = (((info.size**3)/dists) <= theta)
+                next = indexes[np.logical_not(check)]
+                finished = indexes[check]
+                if len(finished) > 0:
+                    self.truncations += len(finished)
+                    particles = np.take(evaluate_at,finished,axis=0)
+                    dists = dists[check]
+                    mass = np.sum(self.masses[node.indices])
+                    if len(dists) > 0:
+                        if eps == 0:
+                            delta_phi = (-1) * constants.G * (mass)/dists
+                            muls = (constants.G * ((mass) / (dists**3)))
+                            accelerations = (-(particles - origin)) * np.reshape(muls,(1,) + muls.shape).T
+                        else:
+                            delta_phi = (-1) * constants.G * (mass)/((dists**2+eps**2)**(1/2))
+                            muls = (constants.G * mass / (((dists**2+eps**2)**(1/2))**3))
+                            accelerations = (-(particles - origin)) * np.reshape(muls,(1,) + muls.shape).T
+                        self.phi[finished] += np.array(delta_phi)
+                        self.acc[finished] += np.array(accelerations)
+                if len(next) == 0:
+                    self.evaluations[-1] = self.correct_evaluations[-1] - 1
+                    done = True
+                else:
+                    self.evaluations.append(0)
+                    self.stack.append(next)
+                    return False
+
+            last = next
+            self.evaluations[-1] += 1
+            
+            while self.evaluations[-1] == self.correct_evaluations[-1]:
+                last = self.stack.pop(-1)
+                self.evaluations.pop(-1)
+                self.correct_evaluations.pop(-1)
+                if len(self.evaluations) == 0:
+                    break
+                self.evaluations[-1] += 1
+                
+            
+            self.stack.append(last)
+            self.evaluations.append(0)
+
+            return done
+        self.tree.traverse(traverse)
         second = time.perf_counter()
-        return accs,phis,second-first
+        return self.acc,self.phi,{"time":second-first,"truncations":self.truncations}
     
     def convert_tree(self):
         first = time.perf_counter()
@@ -179,19 +273,32 @@ class Tree:
                             positions.append(nexts)
         return acc,out,{"truncations":truncations,"directs":direct}
 
-first = time.perf_counter()
+print("NEW")
 tree = Tree(points,masses)
-tree.build_tree()
-acc,out,stats = tree.evaluate_numpy(points,theta=1)
-second = time.perf_counter()
-print("NEW",(second-first))
+print("    BUILD",tree.build_tree())
+acc,phi,stats = tree.evaluate(points,0,1)
+print("TRUNC",stats["truncations"])
+print("    EVAL",stats["time"])
 
-first = time.perf_counter()
+print("OLD")
 tree2 = treecode.Tree(points,masses)
+first = time.perf_counter()
 tree2.build_tree()
-acc2,temp_phi,stats = tree2.evaluate(points,theta=1)
 second = time.perf_counter()
-print("OLD",second-first)
+print("    BUILD",second-first)
+first = time.perf_counter()
+acc2,phi2,stats = tree2.evaluate(points,0,1)
+print("TRUNC",stats["truncations"])
+second = time.perf_counter()
+print("    EVAL",second-first)
+print("")
+print(np.mean(np.abs(phi2-phi)))
+print(np.max((np.abs(phi2-phi))))
+print(np.mean(np.abs((acc2-acc).flatten())))
+print(np.max((np.abs((acc2-acc).flatten()))))
 
-print(np.mean(out - temp_phi))
-#print(np.mean(acc2-acc))
+print("")
+out,stats = PyCC.evaluate(save=False,df=df,eval_type="phi",algo="directsum")
+print(np.mean(out.loc[:,"phi"].to_numpy()),np.mean(phi))
+print(np.mean((out.loc[:,"phi"].to_numpy()-phi)))
+print(np.mean((out.loc[:,"phi"].to_numpy()-phi2)))
