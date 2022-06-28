@@ -281,15 +281,16 @@ class Tree:
                     mass = np.sum(node.masses)
                     dists = dists[check]
                     to_change = finished[dists != 0]
+                    parts = np.take(evaluate_at,to_change,axis=0)
                     dists = dists[dists != 0]
                     if eps == 0:
                         delta_phi = (-1) * constants.G * (mass)/dists
                         muls = (constants.G * ((mass) / (dists**3)))
-                        accelerations = (-(pos - node.pos)) * np.reshape(muls,(1,) + muls.shape).T
+                        accelerations = (-(parts - node.pos)) * np.reshape(muls,(1,) + muls.shape).T
                     else:
                         delta_phi = (-1) * constants.G * (mass)/((dists**2+eps**2)**(1/2))
                         muls = (constants.G * mass / (((dists**2+eps**2)**(1/2))**3))
-                        accelerations = (-(pos - node.pos)) * np.reshape(muls,(1,) + muls.shape).T
+                        accelerations = (-(parts - node.pos)) * np.reshape(muls,(1,) + muls.shape).T
                     out[to_change] += delta_phi
                     acc[to_change] += accelerations
                 if len(nexts) > 0:

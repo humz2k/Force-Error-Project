@@ -7,6 +7,7 @@ from astropy.coordinates import get_body_barycentric_posvel,get_body
 from astropy.time import Time
 import astropy.units as u
 from astropy import constants as const
+import open3d
 
 t = Time('2016-03-20T12:30:00')
 bodies = ['sun', 'earth', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune','pluto']
@@ -42,7 +43,7 @@ positions = pd.DataFrame(positions,columns=["x","y","z"])
 velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])
 df = pd.concat((positions,velocities,masses),axis=1)
 
-out,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=10000,algo="treecode")
+out,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=10000,algo="directsum")
 print(stats)
 
 fig = plt.figure()

@@ -12,7 +12,7 @@ schemes["kick-drift"] = "akd"
 schemes["drift-kick"] = "dak"
 schemes["leapfrog"] = "dakd"
 
-def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,recursive=False,**kwargs):
+def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,**kwargs):
     if type(df) == type(None):
         a = pd.read_csv(file)
     else:
@@ -33,7 +33,7 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
         if algo == "treecode":
             tree_build_time_1 = time.perf_counter()
             tree = treecode.Tree(particles,masses)
-            tree.build_tree(recursive=recursive)
+            tree.build_tree()
             tree_build_time_2 = time.perf_counter()
             acc,phis,stats = tree.evaluate(evaluate_at,**kwargs)
             stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
@@ -58,7 +58,7 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
                     elif algo == "treecode":
                         tree_build_time_1 = time.perf_counter()
                         tree = treecode.Tree(particles,masses)
-                        tree.build_tree(recursive=recursive)
+                        tree.build_tree()
                         tree_build_time_2 = time.perf_counter()
                         acc,temp_phi,stats = tree.evaluate(particles,**kwargs)
                         stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
