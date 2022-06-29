@@ -27,6 +27,8 @@ def plot_pretty(dpi=150,fontsize=10):
 plot_pretty()
 
 ctx = moderngl.create_context(standalone=True)
+print("MAX OUT LENGTH",int((ctx.info["GL_MAX_TEXTURE_BUFFER_SIZE"]*2)))
+    
 
 prog = ctx.program(
     vertex_shader="""
@@ -50,6 +52,10 @@ def get_dists(particles,f_size=4):
 
     f_string = "f" + str(f_size)
 
+    fbo = ctx.simple_framebuffer((1,1))
+    fbo.use()
+
+
     buffer1 = ctx.buffer(particles.astype(f_string).tobytes())
     outbuffer = ctx.buffer(reserve=n_particles*n_particles*(f_size))
 
@@ -64,6 +70,7 @@ def get_dists(particles,f_size=4):
     vao.release()
     buffer1.release()
     outbuffer.release()
+    fbo.release()
 
     return np.reshape(out,(n_particles,n_particles))
 
@@ -79,7 +86,7 @@ def run_test(func,particles,**args):
     t2 = time.perf_counter()
     return t2-t1, a
 
-xs = np.arange(2,22)**3
+xs = [23170]
 gpu = []
 scipy = []
 scipy_4byte = []
@@ -92,19 +99,20 @@ for n_particles in xs:
     f8 = get_particles(radius=10,n_particles=n_particles).astype("f8")
     f4 = f8.astype("f4")
 
-    scipy_8f_time,master = run_test(get_dists_scipy,f8)
-    scipy.append(scipy_8f_time)
+    #scipy_8f_time,master = run_test(get_dists_scipy,f8)
+    #scipy.append(scipy_8f_time)
 
     gpu_4f_time,results = run_test(get_dists,f4,f_size=4)
+    print(results)
     gpu.append(gpu_4f_time)
-    gpu_error.append(np.nanmean(np.abs(results-master)))
+    #gpu_error.append(np.nanmean(np.abs(results-master)))
 
-    scipy_4f_time,results = run_test(get_dists_scipy,f4)
-    scipy_4byte.append(scipy_4f_time)
-    scipy_4byte_error.append(np.nanmean(np.abs(results-master)))
+    #scipy_4f_time,results = run_test(get_dists_scipy,f4)
+    #scipy_4byte.append(scipy_4f_time)
+    #scipy_4byte_error.append(np.nanmean(np.abs(results-master)))
 
 # %% codecell
-
+'''
 fig, ((ax1), (ax2))  = plt.subplots(2, 1, sharex='col')
 
 #fig.supxlabel("N Particles",fontsize=15)
@@ -126,3 +134,4 @@ ax2.set_xlabel("N Particles")
 
 #plt.savefig("GPU vs Scipy with float64 diff")
 plt.show()
+'''
