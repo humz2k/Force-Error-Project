@@ -6,11 +6,6 @@ from scipy import spatial
 from astropy import constants
 import treecode
 
-df = PyCC.Distributions.Uniform(r = 100, p = 100, n = 1000)
-
-points = df.loc[:,["x","y","z"]].to_numpy()
-masses = df.loc[:,"mass"].to_numpy()
-
 class Node:
     def __init__(self,node,info):
         self.node,self.info = node,info
@@ -120,13 +115,3 @@ class Tree:
                         positions.append(nexts)
 
         return acc,out,{"truncations":truncations,"directs":direct}
-
-print("NEW")
-first = time.perf_counter()
-tree = Tree(points,masses)
-first1 = time.perf_counter()
-tree.build_tree()
-second1 = time.perf_counter()
-acc,phi,stats = tree.evaluate(points,0,1)
-second = time.perf_counter()
-print(second-first,second1-first1,stats)

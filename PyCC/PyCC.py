@@ -4,6 +4,11 @@ from scipy import spatial
 from scipy import constants
 from scipy.special import lambertw
 import time
+import os,sys
+
+fpath = os.path.join(os.path.dirname(__file__))
+sys.path.append(fpath)
+
 import treecode
 
 schemes = {}
@@ -31,12 +36,10 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
         if algo == "directsum":
             acc,phis = DirectSum.acc_func(evaluate_at,particles,masses,**kwargs)
         if algo == "treecode":
-            tree_build_time_1 = time.perf_counter()
             tree = treecode.Tree(particles,masses)
-            tree.build_tree()
-            tree_build_time_2 = time.perf_counter()
+            build_time = tree.build_tree()
             acc,phis,stats = tree.evaluate(evaluate_at,**kwargs)
-            stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
+            stats["tree_build_time"] = build_time
         positions = evaluate_at
         vels = velocities
     else:
@@ -50,18 +53,20 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
         phis = np.zeros((steps+1,len(particles)),dtype=float)
         vels[0] = velocities
         positions[0] = particles
+        truncations = 0
+        directs = 0
         for step in range(steps):
             for action in scheme:
                 if action == "a":
                     if algo == "directsum":
                         acc,temp_phi = DirectSum.acc_func(particles,particles,masses,**kwargs)
                     elif algo == "treecode":
-                        tree_build_time_1 = time.perf_counter()
                         tree = treecode.Tree(particles,masses)
-                        tree.build_tree()
-                        tree_build_time_2 = time.perf_counter()
+                        build_time = tree.build_tree()
                         acc,temp_phi,stats = tree.evaluate(particles,**kwargs)
-                        stats["tree_build_time"] = tree_build_time_2-tree_build_time_1
+                        stats["tree_build_time"] = build_time
+                        truncations += stats["truncations"]
+                        directs += stats["directs"]
                 if action == "k":
                     velocities = velocities + acc*dt*kick_t
                 if action == "d":
@@ -70,6 +75,9 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
             accs[step] = acc
             positions[step+1] = particles
             vels[step+1] = velocities
+        if algo == "treecode":
+            stats["truncations"] = truncations
+            stats["directs"] = directs
         if algo == "directsum":
             acc,temp_phi = DirectSum.acc_func(particles,particles,masses,**kwargs)
             phis[-1] = temp_phi
@@ -118,7 +126,7 @@ class DirectSum(object):
             muls = (constants.G * masses / (((dists**2+eps**2)**(1/2))**3))
             accelerations = (parts - pos) * np.reshape(muls,(1,) + muls.shape).T
         return np.sum(accelerations,axis=0),np.sum(potentials)
-    
+
     @staticmethod
     def acc_func(positions,particles,masses,eps=0):
         acc = np.zeros((positions.shape[0],3),dtype=float)
@@ -149,7 +157,7 @@ class Distributions(object):
         if file != None:
             df.to_csv(file,index=False)
         return df
-    
+
     @staticmethod
     def NFW(Rvir,c,p0,n,file=None):
         Rs = Rvir/c
@@ -181,7 +189,7 @@ class Distributions(object):
         if file != None:
             df.to_csv(file,index=False)
         return df
-        
+
 class Analytic(object):
     @staticmethod
     def Uniform(r,p,positions):
@@ -199,7 +207,7 @@ class Analytic(object):
         for idx,pos in enumerate(positions):
             out[idx] = phi(r,p,pos)
         return out
-    
+
     @staticmethod
     def NFW(Rvir,c,p0,positions):
         positions = positions.loc[:,["x","y","z"]].to_numpy()

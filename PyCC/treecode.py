@@ -40,7 +40,7 @@ class Tree:
         self.truncations = 0
         self.full = 0
         self.dist_calculations = 0
-    
+
     def get_box(self):
         max_x = np.max(self.particles[:,0])
         min_x = np.min(self.particles[:,0])
@@ -53,7 +53,7 @@ class Tree:
         z = max([abs(max_z),abs(min_z)])
         size = max([x,y,z])
         return np.array([[-size,size],[-size,size],[-size,size]])
-    
+
     def divide_box(self,box):
         new_boxes = [[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0]]]
         for i in range(0,4):
@@ -91,16 +91,19 @@ class Tree:
         for i in new_boxes:
             boxes.append(np.array(i))
         return boxes
-    
+
     def build_tree(self,recursive = False):
+        first = time.perf_counter()
         if recursive:
             box = self.get_box()
             vol = abs(box[0][1] - box[0][0]) * abs(box[1][1] - box[1][0]) * abs(box[2][1] - box[2][0])
             self.base_node,_,_ = self.make_node_recursive(self.particles,self.masses,box,vol)
             return self.base_node
-        return self.make_nodes()
+        self.make_nodes()
+        second = time.perf_counter()
+        return second-first
 
-    
+
     def particle_in_box(self,particle,box):
         x = particle[0]
         y = particle[1]
@@ -112,7 +115,7 @@ class Tree:
         if (z < box[2][0] or z > box[2][1]):
             return False
         return True
-    
+
     def make_nodes(self):
         box = self.get_box()
         diff = box[:,1] - box[:,0]
@@ -147,7 +150,7 @@ class Tree:
                     new_parts.append(i)
                     new_masses.append(current_masses[idx])
                     to_remove.append(idx)
-            
+
             current_node.particles = np.array(new_parts)
             current_node.masses = np.array(new_masses)
             current_node.n_particles = len(current_node.particles)
@@ -218,7 +221,7 @@ class Tree:
             outside = indexes[np.logical_not(np.isin(indexes,inside))]
             remaining_parts = np.take(particles,outside,axis=0)
             remaining_masses = np.take(particle_masses,outside,axis=0)
- 
+
         pos = (box[:,1] - box[:,0])/2 + box[:,0]
 
         node = Node(parts,masses,vol,pos)
@@ -229,7 +232,7 @@ class Tree:
                 next_node.parent = node
                 if len(parts) == 0:
                     break
-        
+
         return node,remaining_parts,remaining_masses
 
     def evaluate(self,evaluate_at,eps=0,theta=1):
