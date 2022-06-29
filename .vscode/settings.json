@@ -7,4 +7,7 @@
             "type": "pythonEnvironment"
         }
     ],
+    "files.associations": {
+        "algorithm": "c"
+    },
 }
