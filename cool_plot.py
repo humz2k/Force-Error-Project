@@ -9,6 +9,7 @@ p = 100
 m_to_kpc = 3.24078e-20
 
 test_dist = PyCC.Distributions.NFW(Rvir=r,p0=p,c=10,n=n)
+#test_dist = PyCC.Distributions.Uniform(r=r,n=n,p=p)
 out,stats = PyCC.evaluate(df=test_dist,save=False,algo="directsum",eval_type="both",steps=100,dt=100,eps=5)
 particles = {}
 for i in range(n):

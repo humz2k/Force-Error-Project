@@ -10,6 +10,7 @@ fpath = os.path.join(os.path.dirname(__file__))
 sys.path.append(fpath)
 
 import treecode
+import directsum_gpu
 
 schemes = {}
 schemes["euler"] = "adk"
@@ -17,7 +18,7 @@ schemes["kick-drift"] = "akd"
 schemes["drift-kick"] = "dak"
 schemes["leapfrog"] = "dakd"
 
-def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,**kwargs):
+def evaluate(file=None,outfile=None,df=None,evaluate_at = None,accelerate=True,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,**kwargs):
     if type(df) == type(None):
         a = pd.read_csv(file)
     else:
@@ -34,11 +35,14 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
     if eval_type == "phi":
         ids = np.reshape(np.arange(len(evaluate_at)),(1,len(evaluate_at))).T
         if algo == "directsum":
-            acc,phis = DirectSum.acc_func(evaluate_at,particles,masses,**kwargs)
+            if accelerate:
+                accs,phis,stats = directsum_gpu.evaluate(particles,masses,evaluate_at,**kwargs)
+            else:
+                accs,phis = DirectSum.acc_func(evaluate_at,particles,masses,**kwargs)
         if algo == "treecode":
             tree = treecode.Tree(particles,masses)
             build_time = tree.build_tree()
-            acc,phis,stats = tree.evaluate(evaluate_at,**kwargs)
+            accs,phis,stats = tree.evaluate(evaluate_at,**kwargs)
             stats["tree_build_time"] = build_time
         positions = evaluate_at
         vels = velocities
@@ -59,7 +63,10 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
             for action in scheme:
                 if action == "a":
                     if algo == "directsum":
-                        acc,temp_phi = DirectSum.acc_func(particles,particles,masses,**kwargs)
+                        if accelerate:
+                            acc,temp_phi,stats = directsum_gpu.evaluate(particles,masses,particles,**kwargs)
+                        else:
+                            acc,temp_phi = DirectSum.acc_func(particles,particles,masses,**kwargs)
                     elif algo == "treecode":
                         tree = treecode.Tree(particles,masses)
                         build_time = tree.build_tree()
@@ -95,7 +102,8 @@ def evaluate(file=None,outfile=None,df=None,evaluate_at = None,algo = "directsum
     positions = pd.DataFrame(positions,columns=["x","y","z"])
     ids = pd.DataFrame(ids,columns=["id"],dtype=int)
     if eval_type == "phi":
-        out = pd.concat((ids,positions,phis),axis=1)
+        accs = pd.DataFrame(accs,columns=["ax","ay","az"])
+        out = pd.concat((ids,positions,accs,phis),axis=1)
     else:
         accs = pd.DataFrame(accs,columns=["ax","ay","az"])
         vels = pd.DataFrame(vels,columns=["vx","vy","vz"])

@@ -26,6 +26,7 @@ body_masses = {
     "pluto": 1.309e22 * u.kg
 
 }
+
 positions = []
 velocities = []
 masses = []
@@ -43,8 +44,14 @@ positions = pd.DataFrame(positions,columns=["x","y","z"])
 velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])
 df = pd.concat((positions,velocities,masses),axis=1)
 
-out,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=10000,algo="directsum")
+print(df)
+
+outgpu,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=1000,algo="directsum",accelerate=True)
 print(stats)
+
+out,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=1000,algo="directsum",accelerate=False)
+print(stats)
+
 
 fig = plt.figure()
 ax = plt.axes(projection = "3d")
