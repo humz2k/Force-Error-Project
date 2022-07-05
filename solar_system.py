@@ -46,12 +46,9 @@ df = pd.concat((positions,velocities,masses),axis=1)
 
 print(df)
 
-outgpu,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=1000,algo="directsum",accelerate=True)
+out,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=10000,algo="directsum",accelerate=True)
 print(stats)
-
-out,stats = PyCC.evaluate(df=df,save=False,dt=50000,steps=1000,algo="directsum",accelerate=False)
-print(stats)
-
+print(out)
 
 fig = plt.figure()
 ax = plt.axes(projection = "3d")

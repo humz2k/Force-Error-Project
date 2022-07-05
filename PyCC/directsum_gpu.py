@@ -115,6 +115,7 @@ def evaluate(particles,masses,evaluate_at,eps=0,G = constants.G.value):
 
     fbo.release()
     part_buffer.release()
+    G_buffer.release()
     mass_buffer.release()
     eps_buffer.release()
 

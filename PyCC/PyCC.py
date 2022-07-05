@@ -18,7 +18,7 @@ schemes["kick-drift"] = "akd"
 schemes["drift-kick"] = "dak"
 schemes["leapfrog"] = "dakd"
 
-def evaluate(file=None,outfile=None,df=None,evaluate_at = None,accelerate=True,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,**kwargs):
+def evaluate(file=None,outfile=None,df=None,evaluate_at = None,accelerate=False,algo = "directsum",eval_type="both",scheme=schemes["leapfrog"],dt=1000,steps=1,save=True,**kwargs):
     if type(df) == type(None):
         a = pd.read_csv(file)
     else:
