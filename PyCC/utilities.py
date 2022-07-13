@@ -26,12 +26,25 @@ class Distributions(object):
         return df
     
     @staticmethod
-    def Plummer(a,M,n,file=None):
-        #DO THIS
+    def Plummer(a,M,n,E,file=None):
         phi = np.random.uniform(low=0,high=2*np.pi,size=n)
         theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         particle_r = a / np.sqrt(((np.random.uniform(low=0,high=1,size=n)**(-2./3.))) - 1)
-        return particle_r
+        x = particle_r * np.sin(theta) * np.cos(phi)
+        y = particle_r * np.sin(theta) * np.sin(phi)
+        z = particle_r * np.cos(theta)
+        particle_mass = (M)/n
+
+        particles = np.column_stack([x,y,z])
+
+        velocities = np.zeros_like(particles,dtype=float)
+        masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
+        particles = pd.DataFrame(particles,columns=["x","y","z"])
+        velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])
+        df = pd.concat((particles,velocities,masses),axis=1)
+        if file != None:
+            df.to_csv(file,index=False)
+        return df
 
     @staticmethod
     def NFW(Rvir,c,p0,n,file=None):
