@@ -26,18 +26,37 @@ class Distributions(object):
         return df
     
     @staticmethod
-    def Plummer(a,M,n,E,file=None):
+    def Plummer(n,a=1,M=1,G=constants.G,file=None):
         phi = np.random.uniform(low=0,high=2*np.pi,size=n)
         theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         particle_r = a / np.sqrt(((np.random.uniform(low=0,high=1,size=n)**(-2./3.))) - 1)
-        x = particle_r * np.sin(theta) * np.cos(phi)
-        y = particle_r * np.sin(theta) * np.sin(phi)
-        z = particle_r * np.cos(theta)
+        x_pos = particle_r * np.sin(theta) * np.cos(phi)
+        y_pos = particle_r * np.sin(theta) * np.sin(phi)
+        z_pos = particle_r * np.cos(theta)
         particle_mass = (M)/n
+        particles = np.column_stack([x_pos,y_pos,z_pos])
 
-        particles = np.column_stack([x,y,z])
+        x = np.zeros((n),dtype=float)
+        y = np.zeros((n),dtype=float)
+        
+        idx = 0
+        while idx < n:
+            temp_x = np.random.uniform(low=0,high=1,size=1)[0]
+            temp_y = np.random.uniform(low=0,high=0.1,size=1)[0]
+            if temp_y <= temp_x*temp_x*((1.0 - temp_x**2)**3.5):
+                x[idx] = temp_x
+                y[idx] = temp_y
+                idx += 1
 
-        velocities = np.zeros_like(particles,dtype=float)
+        vel = x * np.sqrt(2.0) * np.sqrt((G * M)/(np.sqrt(a**2 + particle_r**2)))
+        phi = np.random.uniform(low=0,high=2*np.pi,size=n)
+        theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
+
+        x_vel = vel * np.sin(theta) * np.cos(phi)
+        y_vel = vel * np.sin(theta) * np.sin(phi)
+        z_vel = vel * np.cos(theta)
+
+        velocities = np.column_stack([x_vel,y_vel,z_vel])
         masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
         particles = pd.DataFrame(particles,columns=["x","y","z"])
         velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])

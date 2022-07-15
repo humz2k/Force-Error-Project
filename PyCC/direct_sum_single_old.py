@@ -60,16 +60,11 @@ def do_batch(part_buffer,mass_buffer,eps_buffer,G_buffer,n_particles,eval_pos):
 
     outbuffer = ctx.buffer(reserve=n_particles*n_evals*4*4)
 
-    yee = time.perf_counter()
-
     vao = ctx.vertex_array(prog, [(part_buffer, "3f", "part"),(eval_buffer, "3f /i", "eval_pos"), (mass_buffer, "1f", "mass"), (eps_buffer, "1f /r", "eps"), (G_buffer, "1f /r", "G")])
 
     vao.transform(outbuffer,instances=n_evals)
 
     out = np.ndarray((n_particles*n_evals*4),"f4",outbuffer.read())
-
-    haw = time.perf_counter()
-
     x = np.sum(np.reshape(out[1::4],(n_evals,n_particles)),axis=1)
     y = np.sum(np.reshape(out[2::4],(n_evals,n_particles)),axis=1)
     z = np.sum(np.reshape(out[3::4],(n_evals,n_particles)),axis=1)
@@ -82,7 +77,7 @@ def do_batch(part_buffer,mass_buffer,eps_buffer,G_buffer,n_particles,eval_pos):
 
     second = time.perf_counter()
 
-    return acc,phis,second-first,haw-yee
+    return acc,phis,second-first
 
 def phi_acc(particles,masses,evaluate_at,eps=0,G = constants.G):
 
@@ -106,18 +101,16 @@ def phi_acc(particles,masses,evaluate_at,eps=0,G = constants.G):
     start = 0
     n_batches = ceil(n_evals/max_input)
     times = np.zeros(n_batches,dtype=float)
-    times2 = np.zeros(n_batches,dtype=float)
     for i in range(n_batches):
         if n_evals - start < max_input:
             end = n_evals
         else:
             end = start + max_input
-        acc,phi,batch_time,yeehaw = do_batch(part_buffer,mass_buffer,eps_buffer,G_buffer,n_particles,evaluate_at[start:end])
+        acc,phi,batch_time = do_batch(part_buffer,mass_buffer,eps_buffer,G_buffer,n_particles,evaluate_at[start:end])
         out_phi[start:end] = phi
         out_acc[start:end] = acc
         start = end
         times[i] = batch_time
-        times2[i] = yeehaw
 
     fbo.release()
     part_buffer.release()
@@ -127,7 +120,7 @@ def phi_acc(particles,masses,evaluate_at,eps=0,G = constants.G):
 
     second = time.perf_counter()
     
-    return out_phi,out_acc,{"eval_time":second-first,"n_batches":n_batches,"batch_times":times,"yeehaw":times2}
+    return out_phi,out_acc,{"eval_time":second-first,"n_batches":n_batches,"batch_times":times}
 
 def evaluate(particles,velocities,masses,eval_pos = None, steps = 0, eps = 0, G = constants.G,dt = 1000,eval_only=False):
 
@@ -159,7 +152,7 @@ def evaluate(particles,velocities,masses,eval_pos = None, steps = 0, eps = 0, G 
         eval_phi[0] = temp_phi
         eval_acc[0] = temp_acc
     else:
-        eval_stats = {"n_batches":0,"batch_times":0,"yeehaw":0}
+        eval_stats = {"n_batches":0,"batch_times":0}
 
     phi,acc,stats = phi_acc(pos,masses,pos,eps,G)
     phis[0] = phi
@@ -167,7 +160,6 @@ def evaluate(particles,velocities,masses,eval_pos = None, steps = 0, eps = 0, G 
 
     out_stats = {}
     average_batch_time = np.sum(stats["batch_times"]) + np.sum(eval_stats["batch_times"])
-    average_yeehaw = np.sum(stats["yeehaw"]) + np.sum(eval_stats["yeehaw"])
     n_batches = stats["n_batches"] + eval_stats["n_batches"]
     
     for step in range(steps):
@@ -180,7 +172,6 @@ def evaluate(particles,velocities,masses,eval_pos = None, steps = 0, eps = 0, G 
         
         phi,acc,stats = phi_acc(pos,masses,pos,eps,G)
         average_batch_time += np.sum(stats["batch_times"])
-        average_yeehaw += np.sum(stats["yeehaw"])
         n_batches += stats["n_batches"]
         phis[step+1] = phi
         accs[step+1] = acc
@@ -190,7 +181,6 @@ def evaluate(particles,velocities,masses,eval_pos = None, steps = 0, eps = 0, G 
             eval_phi[step+1] = temp_phi
             eval_acc[step+1] = temp_acc
             average_batch_time += np.sum(eval_stats["batch_times"])
-            average_yeehaw += np.sum(eval_stats["yeehaw"]) 
             n_batches += eval_stats["n_batches"]
     
     second = time.perf_counter()
@@ -198,7 +188,6 @@ def evaluate(particles,velocities,masses,eval_pos = None, steps = 0, eps = 0, G 
     out_stats["eval_time"] = second-first
     out_stats["n_batches"] = n_batches
     out_stats["batch_times"] = average_batch_time/n_batches
-    out_stats["yeehaw"] = average_yeehaw/n_batches
 
     step_labels = pd.DataFrame(np.reshape(np.repeat(np.arange(steps+1),particles.shape[0]),(1,(steps+1)*particles.shape[0])).T,columns=["step"])
 

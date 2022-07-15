@@ -11,13 +11,20 @@ from scipy import constants
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-cdef void phi_acc(double[:,:] particles, double[:] masses, double[:,:] pos, double G, double eps, double[:,:] acc, double[:] phi):
+cdef void phi_acc(double[:,:] particles, double[:] masses, double G, double eps, double[:,:] acc, double[:] phi, double[:,:] pos = None):
     cdef Py_ssize_t n_pos = pos.shape[0]
     cdef Py_ssize_t n_particles = particles.shape[0]
     cdef int pos_idx
     cdef int part_idx
     cdef double acc_mul
     cdef double dist
+    cdef int do_mass
+
+    if pos == None:
+        do_mass = 1
+    else:
+        do_mass = 0
+
     for pos_idx in prange(n_pos,nogil=True):
 
         acc[pos_idx,0] = 0
@@ -34,7 +41,10 @@ cdef void phi_acc(double[:,:] particles, double[:] masses, double[:,:] pos, doub
                 acc[pos_idx,0] += (particles[part_idx,0] - pos[pos_idx,0]) * acc_mul
                 acc[pos_idx,1] += (particles[part_idx,1] - pos[pos_idx,1]) * acc_mul
                 acc[pos_idx,2] += (particles[part_idx,2] - pos[pos_idx,2]) * acc_mul
-                phi[pos_idx] += (-1) * G * masses[part_idx]/dist
+                if do_mass:
+                    phi[pos_idx] += (-1) * G * masses[pos_idx] * masses[part_idx]/(dist**2)
+                else:
+                    phi[pos_idx] += (-1) * G * masses[part_idx]/dist
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -116,7 +126,7 @@ cdef tuple c_evaluate(double[:,:] particles, double[:,:] velocities, double[:] m
     copy2d(particles,current_part_pos)
     copy2d(velocities,current_part_vel)
 
-    phi_acc(current_part_pos,masses,current_part_pos,G,eps,current_part_acc,current_part_phi)
+    phi_acc(current_part_pos,masses,G,eps,current_part_acc,current_part_phi)
 
     cdef int i
 
@@ -130,7 +140,7 @@ cdef tuple c_evaluate(double[:,:] particles, double[:,:] velocities, double[:] m
     copy2out1d(current_part_phi,0,11,part_out)
 
     if eval_pos != None:
-        phi_acc(current_part_pos,masses,eval_pos,G,eps,current_eval_acc,current_eval_phi)
+        phi_acc(current_part_pos,masses,G,eps,current_eval_acc,current_eval_phi,eval_pos)
 
         for i in range(n_eval_pos):
             eval_out[0,i,1] = i
@@ -154,7 +164,7 @@ cdef tuple c_evaluate(double[:,:] particles, double[:,:] velocities, double[:] m
         copy2out2d(current_part_pos,step+1,2,part_out)
         copy2out2d(current_part_vel,step+1,5,part_out)
 
-        phi_acc(current_part_pos,masses,current_part_pos,G,eps,current_part_acc,current_part_phi)
+        phi_acc(current_part_pos,masses,G,eps,current_part_acc,current_part_phi)
 
         copy2out2d(current_part_acc,step+1,8,part_out)
         copy2out1d(current_part_phi,step+1,11,part_out)
@@ -164,7 +174,7 @@ cdef tuple c_evaluate(double[:,:] particles, double[:,:] velocities, double[:] m
                 eval_out[step+1,i,0] = step+1
                 eval_out[step+1,i,1] = i
 
-            phi_acc(current_part_pos,masses,eval_pos,G,eps,current_eval_acc,current_eval_phi)
+            phi_acc(current_part_pos,masses,G,eps,current_eval_acc,current_eval_phi,eval_pos)
             copy2out2d(current_eval_acc,step+1,2,eval_out)
             copy2out1d(current_eval_phi,step+1,5,eval_out)
     
@@ -175,7 +185,7 @@ cdef double[:,:] c_eval_only(double[:,:] particles, double[:,:] velocities, doub
     cdef Py_ssize_t n_eval = eval_pos.shape[0]
     cdef double[:,:] eval_out = np.zeros((n_eval,4),dtype=float)
 
-    phi_acc(particles,masses,eval_pos,G,eps,eval_out,eval_out[:,3])
+    phi_acc(particles,masses,G,eps,eval_out,eval_out[:,3],eval_pos)
 
     return eval_out
 

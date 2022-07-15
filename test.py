@@ -2,24 +2,47 @@ import PyCC
 import numpy as np
 import matplotlib.pyplot as plt
 
-df = PyCC.Distributions.Uniform(r=10000,n=10000,p=0.1)
-ray = PyCC.ray(np.array([1,0,0]),100,25)
+M = 1
+G = 1
+a = 1
+n = 100
 
-out,eval_out,stats = PyCC.evaluate(df,evaluate_at=ray,steps=1,precision="double")
+df = PyCC.Distributions.Plummer(n=n,M=M,G=G,a=a)
+
+out,stats = PyCC.evaluate(df,steps=0,G=G,precision="single",dt=1/64)
 print(stats)
 
-true_val = eval_out.loc[:,["ax","ay","az","phi"]].to_numpy()
+print(stats["batch_times"] * stats["n_batches"])
+print(stats["yeehaw"] * stats["n_batches"])
 
-out2,eval_out2,stats = PyCC.evaluate(df,evaluate_at=ray,steps=1,precision="single")
+out,stats = PyCC.evaluate(df,steps=0,G=G,precision="double",dt=1/64)
 print(stats)
+print(out)
 
-next_val = eval_out2.loc[:,["ax","ay","az","phi"]].to_numpy()
+exit()
 
-print(np.mean(np.abs((true_val - next_val))))
+def e_phis(outs):
+    steps = np.unique(outs.loc[:,"step"].to_numpy())
+    phis = np.zeros((len(steps)),dtype=float)
+    for step in steps:
+        phis[step] = np.sum(out[out["step"] == step].loc[:,"phi"].to_numpy())/2
+    return phis
 
-for step in range(2):
-    true_out = out[out["step"] == step].loc[:,["x","y","z"]].to_numpy()
-    next_out = out2[out2["step"] == step].loc[:,["x","y","z"]].to_numpy()
-    print(np.mean(np.abs(true_out-next_out)))
-    
+def e_kin(outs,df):
+    steps = np.unique(outs.loc[:,"step"].to_numpy())
+    energies = np.zeros((len(steps)),dtype=float)
+    for step in steps:
+        energies[step] = np.sum(0.5 * df.loc[:,"mass"].to_numpy() * np.linalg.norm(out[out["step"] == step].loc[:,["vx","vy","vz"]].to_numpy(),axis=1)**2)
+    return energies
 
+print(e_phis(out))
+print(e_kin(out,df))
+
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+
+for id in range(n):
+    pos = out[out["id"] == id].loc[:,["x","y","z"]].to_numpy()
+    plt.plot(pos[:,0],pos[:,1],pos[:,2])
+
+plt.show()
