@@ -1,12 +1,11 @@
 import numpy as np
 import pandas as pd
 from scipy import spatial
-from scipy import constants
-from scipy.special import lambertw
+from scipy import special
 
 class Distributions(object):
     @staticmethod
-    def Uniform(r,n,p,file=None):
+    def Uniform(n,r,p,file=None):
         phi = np.random.uniform(low=0,high=2*np.pi,size=n)
         theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         particle_r = r * ((np.random.uniform(low=0,high=1,size=n))**(1/3))
@@ -24,9 +23,9 @@ class Distributions(object):
         if file != None:
             df.to_csv(file,index=False)
         return df
-    
+
     @staticmethod
-    def Plummer(n,a=1,M=1,G=constants.G,file=None):
+    def Plummer(n,a=1,M=1,G=1,file=None):
         phi = np.random.uniform(low=0,high=2*np.pi,size=n)
         theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         particle_r = a / np.sqrt(((np.random.uniform(low=0,high=1,size=n)**(-2./3.))) - 1)
@@ -66,29 +65,56 @@ class Distributions(object):
         return df
 
     @staticmethod
-    def NFW(Rvir,c,p0,n,file=None):
-        Rs = Rvir/c
-        def mass(r,Rs=Rs,p0=p0):
-            return 4 * np.pi * p0 * (Rs**3) * (np.log((Rs+r)/Rs) + (Rs/(Rs + r)) - 1)
-        def cdf(r):
-            return (np.log((Rs+r)/Rs) + (Rs/(Rs + r)) - 1)/(np.log((Rs+Rvir)/Rs) + (Rs/(Rs + Rvir)) - 1)
-        maxMass = mass(Rvir,Rs,p0)
-        def inverse_cdf(p):
-            y = p*(np.log((Rs+Rvir)/Rs) + (Rs/(Rs + Rvir)) - 1)
-            W = lambertw((-1)/(np.exp(y+1)))
-            return float((-Rs/(W)) - Rs)
-        radiuses = np.zeros((n))
-        input_p = np.random.uniform(0,1,n)
-        for i in range(n):
-            radiuses[i] = inverse_cdf(input_p[i])
+    def NFW(n,Rs,p0,c,a,G=1,file=None):
+        
+        def mu(x):
+            return np.log(1.0 + x) - x / (1.0 + x)
+
+        def qnfw(p, c, logp=False):
+            if (logp):
+                p = np.exp(p)
+            p[p>1] = 1
+            p[p<=0] = 0
+            p *= mu(c)
+            return (-(1.0/np.real(special.lambertw(-np.exp(-p-1))))-1)/c
+
+        def rnfw(n,c,a):
+            return qnfw(np.random.rand(int(n)), c=c * a)
+        
+        def vcirc(r,c,Rs):
+            x = r/Rs
+            return  np.sqrt((1/x) * (np.log(1+c*x) - (c*x)/(1+c*x))/(np.log(1+c)-c/(1+c)))
+                    
+        Rvir = c*Rs
+        aRvir = a * Rvir
+        
+        maxMass = 4 * np.pi * p0 * (Rs**3) * (np.log(1+a*c) - ((a*c)/(1+a*c)))
+        virialMass = 4 * np.pi * p0 * (Rs**3) * (np.log(1+c) - (c/(1+c)))
+
+        radiuses = rnfw(n,c,a) * aRvir
+
         phi = np.random.uniform(low=0,high=2*np.pi,size=n)
         theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
         x = radiuses * np.sin(theta) * np.cos(phi)
         y = radiuses * np.sin(theta) * np.sin(phi)
         z = radiuses * np.cos(theta)
+
+        Vvir = np.sqrt((G*virialMass)/Rvir)
+
+        vel = np.zeros_like(radiuses)
+        for idx,r in enumerate(radiuses):
+            vel[idx] = vcirc(r,c,Rs) * Vvir
+        
+        phi = np.random.uniform(low=0,high=2*np.pi,size=n)
+        theta = np.arccos(np.random.uniform(low=-1,high=1,size=n))
+
+        x_vel = vel * np.sin(theta) * np.cos(phi)
+        y_vel = vel * np.sin(theta) * np.sin(phi)
+        z_vel = vel * np.cos(theta)
+
         particle_mass = maxMass/n
         particles = np.column_stack([x,y,z])
-        velocities = np.zeros_like(particles,dtype=float)
+        velocities = np.column_stack([x_vel,y_vel,z_vel])
         masses = pd.DataFrame(np.full((1,n),particle_mass).T,columns=["mass"])
         particles = pd.DataFrame(particles,columns=["x","y","z"])
         velocities = pd.DataFrame(velocities,columns=["vx","vy","vz"])
@@ -96,35 +122,37 @@ class Distributions(object):
         if file != None:
             df.to_csv(file,index=False)
         return df
+        
 
 class Analytic(object):
     @staticmethod
-    def Uniform(r,p,positions):
+    def Uniform(r,p,positions,G):
         positions = positions.loc[:,["x","y","z"]].to_numpy()
         def phi(r,p,pos):
             pos_r = spatial.distance.cdist(np.array([[0,0,0]]),np.reshape(pos,(1,)+pos.shape)).flatten()[0]
             relative = pos_r/r
             if relative == 1:
-                return (-4/3) * np.pi * constants.G * p * (r ** 2)
+                return (-4/3) * np.pi * G * p * (r ** 2)
             elif relative < 1:
-                return (-2) * np.pi * constants.G * p * ((r ** 2) - ((1/3) * ((pos_r)**2)))
+                return (-2) * np.pi * G * p * ((r ** 2) - ((1/3) * ((pos_r)**2)))
             else:
-                return (-4/3) * np.pi * constants.G * p * ((r ** 3)/(pos_r))
+                return (-4/3) * np.pi * G * p * ((r ** 3)/(pos_r))
         out = np.zeros((len(positions)),dtype=float)
         for idx,pos in enumerate(positions):
             out[idx] = phi(r,p,pos)
         return out
 
     @staticmethod
-    def NFW(Rvir,c,p0,positions):
+    def NFW(Rs,p0,positions,G):
         positions = positions.loc[:,["x","y","z"]].to_numpy()
-        Rs = Rvir/c
-        def phi(Rs,p0,pos):
+        def phi(Rs,pos):
             pos_r = spatial.distance.cdist(np.array([[0,0,0]]),np.reshape(pos,(1,)+pos.shape)).flatten()[0]
-            return ((-4 * np.pi * constants.G * p0 * (Rs**3))/pos_r) * np.log(1+(pos_r/Rs))
+            if pos_r == 0:
+                return -4 * np.pi * G * p0 * (Rs**2)
+            return (-4 * np.pi * G * p0 * (Rs**2)) * np.log(1+(pos_r/Rs))/(pos_r/Rs)
         out = np.zeros((len(positions)),dtype=float)
         for idx,pos in enumerate(positions):
-            out[idx] = phi(Rs,p0,pos)
+            out[idx] = phi(Rs,pos)
         return out
 
 def angles2vectors(alphas,betas):
@@ -154,3 +182,18 @@ def ray_rs(length,nsteps):
 def points2radius(points):
     points = points.loc[:,["x","y","z"]].to_numpy()
     return spatial.distance.cdist(np.array([[0,0,0]]),points).flatten()
+
+def outdf2numpy(df):
+    steps = np.unique(df.loc[:,"step"].to_numpy())
+    nsteps = steps.shape[0]
+    ids = np.unique(df.loc[:,"id"].to_numpy())
+    nparticles = ids.shape[0]
+    pos = df.loc[:,["x","y","z"]].to_numpy()
+    pos = pos.reshape(nsteps,nparticles,3)
+    vel = df.loc[:,["vx","vy","vz"]].to_numpy()
+    vel = vel.reshape(nsteps,nparticles,3)
+    acc = df.loc[:,["ax","ay","az"]].to_numpy()
+    acc = acc.reshape(nsteps,nparticles,3)
+    gpe = df.loc[:,["gpe"]].to_numpy()
+    gpe = gpe.reshape(nsteps,nparticles,1)
+    return {"pos":pos,"vel":vel,"acc":acc,"gpe":gpe}
